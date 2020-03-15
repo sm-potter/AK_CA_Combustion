@@ -1,12 +1,16 @@
 Created by Stefano Potter 03/15/2020.
 -------------------------------------------------------Files for anything associated with model training
 File: prepare_all_spatial_vars.R
-Local location: /mnt/data1/boreal/spotter/scripts/combustion_final/R
+Local: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
 Notes: This script will take all the original spatial variables I got as detailed in Readme_BR.docx and only select the
 variable related to fire weather indicies, DOB and climate NA.  All other variables I will be aquireing my self in subsequent
 scripts.  This script also updates belowground combustion from a file I got from Xanthe which includes CMD estimates.
 
-
+File: all_training_extraction
+Location: (ee) users/spotter/default/combustion
+Notes:  This script will take all the training pts from prepare_all_spatial_vars.R and extract ndvi, ndii, tasseledp cap, dnbr,
+rbr, and rdnbr from harmonized landsat. It will also get pat burnd dem variable such as elevation, aspect, slope and twi.
+Note that twi here was processed on cloud ops, no definitive script to link at this point.
 
 -------------------------------------------------------Files for anything associated with model training
 
