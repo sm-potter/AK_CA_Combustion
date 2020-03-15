@@ -51,9 +51,12 @@ dir.create(out, recursive = T)
 write_csv(df, file.path(out, 'for_extraction.csv'))
 
 #now also create a shapefile of the same data
+
+df <- df %>% dplyr::select('id', 'latitude', 'longitude', 'burn_year', 'DOB_lst')
 df <-  st_as_sf(df, coords = c("longitude", "latitude"),
                 crs = 4326, agr = "constant")
 
+write_sf(df, file.path(out, 'for_extraction.shp'))
 
 
 
