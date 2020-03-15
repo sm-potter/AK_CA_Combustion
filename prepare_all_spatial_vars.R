@@ -56,8 +56,11 @@ df <- df %>% dplyr::select('id', 'latitude', 'longitude', 'burn_year', 'DOB_lst'
 df <-  st_as_sf(df, coords = c("longitude", "latitude"),
                 crs = 4326, agr = "constant")
 
-write_sf(df, file.path(out, 'for_extraction.shp'))
+#also get gregorian date
+df <-  df %>% mutate(Date = as.Date(strptime(paste(burn_year, DOB_lst), "%Y %j")))
 
+write_sf(df, file.path(out, 'for_extraction.shp'))
+# 
 
 
 
