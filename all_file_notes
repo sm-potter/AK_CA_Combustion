@@ -12,5 +12,14 @@ Notes:  This script will take all the training pts from prepare_all_spatial_vars
 rbr, and rdnbr from harmonized landsat. It will also get pat burnd dem variable such as elevation, aspect, slope and twi.
 Note that twi here was processed on cloud ops, no definitive script to link at this point.
 
+File: fwi_extract_training.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
+Notes: This will extract all the GFWED v2.5 FWI indices for the training data
+
+File: stand_age_training_extract.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
+Notes: This will extract all the stand ages using Beadoin/Pan/historical fires in AK (script not yet attached, but
+the output of the script is linked to this R file) for the training data.
+
 -------------------------------------------------------Files for anything associated with model training
 
