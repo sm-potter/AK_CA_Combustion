@@ -1,5 +1,5 @@
 File: prepare_all_spatial_vars.R
-Local location: /mnt/data1/boreal/spotter/scripts/combustion2/R
+Local location: /mnt/data1/boreal/spotter/scripts/combustion_final/R
 Notes: This script will take all the original spatial variables I got as detailed in Readme_BR.docx and only select the
 variable related to fire weather indicies, DOB and climate NA.  All other variables I will be aquireing my self in subsequent
 scripts.  This script also updates belowground combustion from a file I got from Xanthe which includes CMD estimates.
