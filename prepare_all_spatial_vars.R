@@ -33,7 +33,7 @@ df <- df %>% dplyr::rename(DMC = DMC.y) %>% dplyr::rename(BUI = BUI.y) %>% dplyr
 #see Readme_BR.docx, attached in git hub
 master_cols <- c('id','above.carbon.combusted', 'below.ground.carbon.combusted', 'burn_year', 
                  'project.name', 'latitude', 'longitude',
-                 'dNBR', 'Tree.cover', 'elevation', 'slope', 'aspect', 'TWI', 
+                 'dNBR', 'elevation', 'slope', 'aspect', 'TWI', 
                  'PFI', 'Ruggedness', 'pH_30', 'GRSH', 'DEC', 'BS',
                  'Sand_30', 'Silt_30', 'Clay_30', 'SOC_30', 'NV', 'WS', 'JP',
                  'OCON', 'DOB_lst', 'CNA_Tave_5_8', 'CNA_Tmax_5_8', 'CNA_Tmin_5_8', 'CNA_PPT_5_8',
