@@ -98,7 +98,7 @@ all_extracted <- extract_fwi(pts, "/mnt/data1/boreal/raw/GFWED/v2.5", variables,
 out <- "/mnt/data1/boreal/spotter/combustion/final_files/raw"
 dir.create(out, recursive = T)
 
-in_csv <- read_csv(file.path(out, 'for_extraction.csv'))
+in_csv <- read_csv(file.path(out, 'for_extraction.csv')) %>% dplyr::select(id)
 
 in_csv <- left_join(in_csv, all_extracted , by = 'id')
 
