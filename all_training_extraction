@@ -1,0 +1,297 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var pts = ee.FeatureCollection("users/spotter/ak_ca_combustion/raw/all_training_pts"),
+    dem = ee.ImageCollection("users/spotter/burns_dem"),
+    twi = ee.ImageCollection("users/spotter/twi_30m"),
+    tree_cover = ee.ImageCollection("GLCF/GLS_TCC");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//get mean of the dem
+var dem = dem.mean().select('b1').rename('elevation');
+
+//get mean of the twi
+var twi = twi.mean().select('b1').rename('TWI');
+
+//get slope
+var slope = ee.Terrain.slope(dem);
+
+//get aspect
+var aspect = ee.Terrain.aspect(dem);
+
+
+//function to extract all the data, input is an image and collection is a feature collection
+var extract = function(input, ind_var, scale) {
+  var sampled = ind_var.sampleRegions({collection: input,
+                                tileScale: 16,
+                                scale: 30,
+                                crs: ind_var.projection(),
+                                geometries: false
+  });
+  return sampled;                                                                       
+};
+
+//a filter to join all the variables
+var filter = ee.Filter.equals({
+  leftField: 'id',
+  rightField: 'id'
+});
+
+// a simple join
+var simpleJoin = ee.Join.saveFirst( {matchKey:'key'});
+
+//function to join the tables, left is left_table, right is right_table, filter is filter of choice
+var join_all = function(left, right, filter) {
+  var join = simpleJoin.apply(left, right, filter);
+ 
+ //flatten the key feature so its one table
+  var join = join.map(function(f) {
+  var f1 = ee.Feature(f);
+  var f2 = ee.Feature(f.get('key')).toDictionary();
+  return ee.Feature(f1).set(f2).set('key', null);   
+});
+
+  return join;                                                                       
+};
+
+// nbr function
+var get_NBR = function(img) {
+    var index = img.normalizedDifference(['B4', 'B7'])                     
+                  .select([0], ['NBR'])                                    
+                  .set('system:time_start', img.get('system:time_start')); 
+    return index ;
+};
+
+// ndvi function
+var get_NDVI = function(img) {
+    var index = img.normalizedDifference(['B4', 'B3'])                     
+                  .select([0], ['NDVI'])                                    
+                  .set('system:time_start', img.get('system:time_start')); 
+    return index ;
+};
+
+// ndii function
+var get_NDII = function(img) {
+    var index = img.normalizedDifference(['B4', 'B5'])                     
+                  .select([0], ['NDII'])                                    
+                  .set('system:time_start', img.get('system:time_start')); 
+    return index ;
+};
+
+
+//tasseled cap coefficients
+var coefficients = ee.Array([
+  [0.3037, 0.2793, 0.4743, 0.5585, 0.5082, 0.1863],
+  [-0.2848, -0.2435, -0.5436, 0.7243, 0.0840, -0.1800],
+  [0.1509, 0.1973, 0.3279, 0.3406, -0.7112, -0.4572],
+  [-0.8242, 0.0849, 0.4392, -0.0580, 0.2012, -0.2768],
+  [-0.3280, 0.0549, 0.1075, 0.1855, -0.4357, 0.8085],
+  [0.1084, -0.9022, 0.4120, 0.0573, -0.0251, 0.0238]
+]);
+    
+
+//function to get tasseled cap
+var get_tc = function(image){
+  return image.addBands(ee.Image(coefficients).matrixMultiply(image.toArray().toArray(1)).arrayProject([0])
+  .arrayFlatten(
+    [['brightness', 'greenness', 'wetness', 'fourth', 'fifth', 'sixth']]));
+};
+
+//get all the unique burn years to loop through
+var burn_years = ee.List(pts.distinct(["burn_year"]).aggregate_array("burn_year")).sort();
+
+//I don't know why but my code doesn't like ee features, I also start at
+//1987 since landsat 5 launched in 1984
+var burn_years = [1987, 1990, 1991, 1993, 
+                  1994, 1996, 1998, 1999, 
+                  2002, 2003, 2004, 2005, 
+                  2010, 2011, 2013, 2014, 
+                  2015];
+                  
+var burn_years2 = ['1987', '1990', '1991', '1993', 
+                   '1994', '1996', '1998', '1999', 
+                   '2002', '2003' ,'2004', '2005', 
+                   '2010', '2011', '2013', '2014', 
+                   '2015'];
+
+//dict for tc years
+var tc_years = [ee.Number(2000), ee.Number(2000), ee.Number(2000), ee.Number(2000), 
+                ee.Number(2000), ee.Number(2000), ee.Number(2000), ee.Number(2000), 
+                ee.Number(2000), ee.Number(2000), ee.Number(2000), ee.Number(2000), 
+                ee.Number(2005), ee.Number(2010), ee.Number(2010), ee.Number(2010),
+                ee.Number(2010)];
+
+var tc_dict = ee.Dictionary.fromLists(burn_years2, tc_years);
+
+
+var feat_iteration = ee.FeatureCollection(burn_years.map(function(element){
+
+
+  //get tc_year from dictionary
+  var tc_year = tc_dict.get(String(element));
+
+  //start date for anything pre and post burn
+  var start = element - 1;
+  var end = element + 1;
+  
+    //------------------------------------------------harmonize landsat
+  // define years and dates to include in landsat image collection
+  var startYear  = String(start);    // what year do you want to start the time series 
+  var endYear    = String(end);    // what year do you want to end the time series
+  var startDay   = '01-01'; // what is the beginning of date filter | month-day
+  var endDay     = '12-30'; // what is the end of date filter | month-day
+  
+  //########################################################################################################
+  //##### ANNUAL SR TIME SERIES COLLECTION BUILDING FUNCTIONS ##### 
+  //########################################################################################################
+  
+  //----- MAKE A DUMMY COLLECTOIN FOR FILLTING MISSING YEARS -----
+  var dummyCollection = ee.ImageCollection([ee.Image([0,0,0,0,0,0]).mask(ee.Image(0))]); // make an image collection from an image with 6 bands all set to 0 and then make them masked values
+  
+  
+  //------ L8 to L7 HARMONIZATION FUNCTION -----
+  // slope and intercept citation: Roy, D.P., Kovalskyy, V., Zhang, H.K., Vermote, E.F., Yan, L., Kumar, S.S, Egorov, A., 2016, Characterization of Landsat-7 to Landsat-8 reflective wavelength and normalized difference vegetation index continuity, Remote Sensing of Environment, 185, 57-70.(http://dx.doi.org/10.1016/j.rse.2015.12.024); Table 2 - reduced major axis (RMA) regression coefficients
+  var harmonizationRoy = function(oli) {
+    var slopes = ee.Image.constant([0.9785, 0.9542, 0.9825, 1.0073, 1.0171, 0.9949]);        // create an image of slopes per band for L8 TO L7 regression line - David Roy
+    var itcp = ee.Image.constant([-0.0095, -0.0016, -0.0022, -0.0021, -0.0030, 0.0029]);     // create an image of y-intercepts per band for L8 TO L7 regression line - David Roy
+    var y = oli.select(['B2','B3','B4','B5','B6','B7'],['B1', 'B2', 'B3', 'B4', 'B5', 'B7']) // select OLI bands 2-7 and rename them to match L7 band names
+              .resample('bicubic')                                                          // ...resample the L8 bands using bicubic
+              .subtract(itcp.multiply(10000)).divide(slopes)                                // ...multiply the y-intercept bands by 10000 to match the scale of the L7 bands then apply the line equation - subtract the intercept and divide by the slope
+              .set('system:time_start', oli.get('system:time_start'));                      // ...set the output system:time_start metadata to the input image time_start otherwise it is null
+    return y.toShort();                                                                       // return the image as short to match the type of the other data
+  };
+  
+  //------ RETRIEVE A SENSOR SR COLLECTION FUNCTION -----
+  var getSRcollection = function(startYear, endYear, startDay, endDay, sensor) {
+    // get a landsat collection for given year, day range, and sensor
+    var srCollection = ee.ImageCollection('LANDSAT/'+ sensor + '/C01/T1_SR') // get surface reflectance images
+                        // .filterBounds(aoi)                                  // ...filter them by intersection with AOI
+                        .filterDate(startYear+'-'+startDay, endYear+'-'+endDay);    // ...filter them by year and day range
+    
+    // apply the harmonization function to LC08 (if LC08), subset bands, unmask, and resample           
+    srCollection = srCollection.map(function(img) {
+      var dat = ee.Image(
+        ee.Algorithms.If(
+          sensor == 'LC08',                                                  // condition - if image is OLI
+          harmonizationRoy(img.unmask()),                                    // true - then apply the L8 TO L7 alignment function after unmasking pixels that were previosuly masked (why/when are pixels masked)
+          img.select(['B1', 'B2', 'B3', 'B4', 'B5', 'B7'])                   // false - else select out the reflectance bands from the non-OLI image
+            .unmask()                                                       // ...unmask any previously masked pixels 
+            .resample('bicubic')                                            // ...resample by bicubic 
+            .set('system:time_start', img.get('system:time_start'))         // ...set the output system:time_start metadata to the input image time_start otherwise it is null
+        )
+      );
+      
+      // make a cloud, cloud shadow, and snow mask from fmask band
+      var qa = img.select('pixel_qa');                                       // select out the fmask band
+      var mask = qa.bitwiseAnd(8).eq(0).and(                                 // include shadow
+                qa.bitwiseAnd(16).eq(0)).and(                               // include snow
+                qa.bitwiseAnd(32).eq(0));                                   // include clouds
+      
+      // apply the mask to the image and return it
+      return dat.mask(mask); //apply the mask - 0's in mask will be excluded from computation and set to opacity=0 in display
+    });
+  
+    return srCollection; // return the prepared collection
+  };
+  
+  
+  //------ FUNCTION TO COMBINE LT05, LE07, & LC08 COLLECTIONS -----
+  var getCombinedSRcollection = function(startYear, endYear, startDay, endDay) {
+      var lt5 = getSRcollection(startYear, endYear, startDay, endDay, 'LT05');       // get TM collection for a given year, date range, and area
+      var le7 = getSRcollection(startYear, endYear, startDay, endDay, 'LE07');       // get ETM+ collection for a given year, date range, and area
+      var lc8 = getSRcollection(startYear, endYear, startDay, endDay, 'LC08');       // get OLI collection for a given year, date range, and area
+      var mergedCollection = ee.ImageCollection(lt5.merge(le7).merge(lc8)); // merge the individual sensor collections into one imageCollection object
+      return mergedCollection;                                              // return the Imagecollection
+  };
+  
+  //get harmonzied collection
+  var input_collection = getCombinedSRcollection(startYear, endYear, startDay, endDay);
+
+  
+  //get only the year of interest for the pts collection
+  var sub_samples = pts.filter(ee.Filter.eq("burn_year", element));
+
+  //get the tree_cover year of interest
+  var date1 = ee.Date.fromYMD(tc_year, ee.Number(1), ee.Number(1));
+  var date2 = ee.Date.fromYMD(tc_year, ee.Number(12), ee.Number(31));
+  var tree_cover2 = tree_cover.filter(ee.Filter.date(date1, date2)).mean().select('tree_canopy_cover');
+  
+  //get NBR - b4, b7
+  var nbr = input_collection.map(get_NBR)                                            
+          .map(function(img) {return img          
+          .set('system:time_start', img.get('system:time_start'))}); 
+           
+  //get NDVI - b4, b3
+  var ndvi = input_collection.map(get_NDVI)                                            
+          .map(function(img) {return img          
+          .set('system:time_start', img.get('system:time_start'))}); 
+           
+  //get NDII - b3, b4
+  var ndii = input_collection.map(get_NDII)                                            
+          .map(function(img) {return img          
+          .set('system:time_start', img.get('system:time_start'))}); 
+  
+  //filter ndii as the spring after the fire
+  var ndii = ndii.filterDate(String(end) + '-05-16', String(end) + '-06-15').mean();
+  
+  //filter ndvi as the spring after the fire
+  var ndvi = ndvi.filterDate(String(end) + '-05-16', String(end) + '-06-15').mean();
+
+  //filter tasseled as the spring after the fire
+  var tcap = input_collection.map(get_tc).select(['brightness', 'greenness', 'wetness']);
+  var tcap = tcap.filterDate(String(end) + '-05-16', String(end) + '-06-15').mean();
+  
+  //get indices of interest
+  var preNBR = nbr.filterDate(String(start) + '-06-01', String(start) + '-08-31').select('NBR').mean().select('NBR').rename('preNBR');
+  var postNBR = nbr.filterDate(String(end) + '-06-01', String(end) + '-08-31').select('NBR').mean().select('NBR').rename('postNBR');
+  
+  var dnbr = preNBR.select('preNBR').subtract(postNBR.select('postNBR'));
+  var dnbr = dnbr.select('preNBR').rename('dNBR');
+ 
+  var burnIndices = preNBR.addBands(postNBR).addBands(dnbr);
+  
+  // calculate RBR  
+  var rbr = burnIndices.expression(
+            "b('dNBR') / (b('preNBR') + 1.001)")
+            .rename('rbr').toFloat();
+  
+  var burnIndices = burnIndices.addBands(rbr);
+  
+// calculate RdNBR
+  var preNBR2 = burnIndices.expression(
+    "(b('preNBR') < 0.001) ? 0.001" + 
+      ": b('preNBR')")
+      .sqrt().rename('preNBR2').toFloat();
+  
+  var burnIndices = burnIndices.addBands(preNBR2);
+
+  var rdnbr = burnIndices.expression(
+    "(b('dNBR') / sqrt(b('preNBR2')))")
+    .rename('rdnbr').toFloat().addBands(burnIndices);
+  
+  var rdnbr = rdnbr.select(['dNBR', 'rbr', 'rdnbr']);
+    
+  //join the rest of the bands together
+  var all_bands = rdnbr.addBands(dem).addBands(aspect).addBands(slope)
+                      .addBands(twi).addBands(ndii).addBands(ndvi)
+                      .addBands(tcap).addBands(tree_cover2);
+                       
+
+  //extract all the bands
+  var result = all_bands.sampleRegions({collection: sub_samples,
+                                scale: 30,
+                                tileScale: 16,
+                                geometries: false
+  });
+  
+  return(result);
+
+}));
+
+var final = feat_iteration.flatten();
+
+print(final.size());
+
+Export.table.toCloudStorage({
+  collection: feat_iteration.flatten(),
+  bucket: 'smp-scratch',
+  description: 'all_remotely_sensed_extracted',
+  fileFormat: 'CSV'
+});
