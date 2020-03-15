@@ -34,5 +34,5 @@ for(y in unique(df$burn_year)){
 
 final <- bind_rows(final)
 
-write_csv(final, "/mnt/data1/boreal/spotter/combustion/final_files/stand_age_training.csv")
+write_csv(final, "/mnt/data1/boreal/spotter/combustion/final_files/raw/stand_age_training.csv")
 
