@@ -47,7 +47,7 @@ Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
 Notes: For the 200 samples pixels in get_modis_pixels.R find which landsat pixels are in the MODIS sub pixels,
 since we are comparing the difference in the two scales.
 
-File: all_landsat_modis_centroids.R
+File: get_all_landsat_modis_centroids.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
 Notes: Convert landsat 30m resolution tiles from jwang to points and intersect with sampled landsat pixels.  
 Export this file as a shp for EE and a csv, which links landsat specific ids to modis specific ids, both individual years (ID2) and all years combined (ID1). 
