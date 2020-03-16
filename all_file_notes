@@ -39,7 +39,47 @@ except for combustion/R/scaling/combined which was not necessary.
 File: get_modis_pixels.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
 Notes: This will pull out based on sols burn detection files pixels that are 100% landsat classified burned
-and 100% vegetated
+and 100% vegetated.  200 pixels are then samples and .shp and .tif of these samples are exported, including
+coordinates used for climate_na extraction.
+
+File: all_above_scenes.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
+Notes: For the 200 samples pixels in get_modis_pixels.R find which landsat pixels are in the MODIS sub pixels,
+since we are comparing the difference in the two scales.
+
+File: all_landsat_modis_centroids.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
+Notes: Convert landsat 30m resolution tiles from jwang to points and intersect with sampled landsat pixels.  
+Export this file as a shp for EE and a csv, which links landsat specific ids to modis specific ids, both individual years (ID2) and all years combined (ID1). 
+Landsat Ids come with landsat ID first. Also export .csv file with info for climant_na extraction for landsat.
+
+File: join_elevation.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
+Notes: Merge elevation from burnd DEM (in ee, script not attached here) into the climate na files for extraction
+
+File: get_dob_for_samples.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
+Notes: Get the DOB info from Sols files for all the sampled pixels described above
+
+File: FWI_extract_mod_samples.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
+Notes: extract all the FWI info for landsat and modis samples - Note to me, this has changed - update!!!!
+
+File: modis_landsat_samples_cna.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
+Notes: Join all the climate na data downloaded from the .exe.
+
+File: join_all_vars_new.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
+Notes: Join all the variables together such as FWI, CNA, DOB and spatial variables from EE
+
+File: predict_samples.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
+Notes: Run the predictions on the scaled data and do the bias correction with a linear model.
+Export graphs of comparisons and residual plots
+
+
+
 
 -------------------------------------------------------Files for anything associated with monte carl/predictions
 
