@@ -25,6 +25,24 @@ File: join_all_training.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
 Notes: This will join all the spatial files together
 
+File: model_training.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
+Notes: Optimize the tuning parameters with a random search grid across a series of models, and compare the distribution
+of the R2 across a 10 fold cross validation repeated 100 times.  Output top four models for both stand age and
+not stand age included as well as performance metrics.
+
+File: rf_permute.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
+Notes: Fine the significant variables in a random forest for both stand age and not
+stand age included.  Get a final model using only the significant variables and output the final
+performance metric as well as variable importance and variables selected.
+
+File: final_model.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
+Notes: Save final models built using either optimized paramaters (non-signficant model versions) or
+signficant variables but trained an the entire dataset.  These can be used for actual predictions.
+Also make scatter plots of the observed vs predicted data across the entire training set.
+
 -------------------------------------------------------Files for anything associated with scaling
 Note!!! These next series of files apply to four folders in cloud ops under combustion/R/scaling
 The only difference in the scripts is they refernece differen't pixel samples, as judged by sols
