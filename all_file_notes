@@ -26,6 +26,20 @@ Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
 Notes: This will join all the spatial files together
 
 -------------------------------------------------------Files for anything associated with scaling
+Note!!! These next series of files apply to four folders in cloud ops under combustion/R/scaling
+The only difference in the scripts is they refernece differen't pixel samples, as judged by sols
+burn area product.  The root combustion/R/scaling scripts apply to pixles 100% burned and 100% vegetated.
+combustion/R/scaling/mixed_fire_mixed_veg is <100% burned and <100% vegetated
+combustion/R/scaling/mixed_fire_pured_veg is <100% burned and 100% vegetated
+combustion/R/scaling/pure_fire_mixed_veg is 100% burned and <100% vegetated
+combustion/R/scaling/combined is all four of the above pixels above combined, which will be our final comparison
+for the paper.  All EE scripts listed below also have files in my EE account associated with these differen't folders
+except for combustion/R/scaling/combined which was not necessary.
+
+File: get_modis_pixels.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
+Notes: This will pull out based on sols burn detection files pixels that are 100% landsat classified burned
+and 100% vegetated
 
 -------------------------------------------------------Files for anything associated with monte carl/predictions
 
