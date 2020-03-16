@@ -79,7 +79,7 @@ model_compare <- function(df, out_path){
   ##
   
   #set up cluster - requires doSNOW, and parallel packages
-  cores <- detectCores() - 3 #reduce max cores by 3
+  cores <- detectCores() #reduce max cores by 3
   cl <-makeCluster(cores)
   registerDoSNOW(cl)
   
