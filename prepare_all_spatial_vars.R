@@ -5,9 +5,15 @@ library(sf)
 df <- read_csv("/mnt/data1/boreal/spotter/combustion/intro_files/text_files/Combustion_Data_051019_DOB_SMP.csv") 
 df<- df %>% filter(treatment != 'Control')
 
+#sf.712 is duplicated for some reason (due to data I got), change the one with project.id = BR_AK1.sf.30
+#to sf.713
+df <- df %>% mutate(id = ifelse((id == 'sf.712' & project.id == 'BR_AK1.sf.30'), 'sf.713', id))
+
 #this file has the updates CMD vaues
 df2 <- read_csv('/mnt/data1/boreal/spotter/combustion/intro_files/text_files/Combustion_SynthesisData_07032019_XJW_CMDUpdate.csv')
 df2 <- df2 %>% filter(treatment != 'Control')
+
+df2 <- df2 %>% mutate(id = ifelse((id == 'sf.712' & project.id == 'BR_AK1.sf.30'), 'sf.713', id))
 
 #for df2 select only the id, above.carbon.combusted and below.ground.carbon.combusted.values
 df2 <- df2 %>% select(id, above.carbon.combusted, below.ground.carbon.combusted)
@@ -18,7 +24,9 @@ df <- df %>% dplyr::select(-above.carbon.combusted, -below.ground.carbon.combust
 #replace the new values into the original df
 df <- left_join(df, df2, by = 'id')
 
-#select variables of interest
+#burn_year cannot be empty, remove those which are
+df <- df %>% filter(is.na(burn_year) == FALSE)
+
 
 #remove and dplyr::rename some columns
 df <- df %>% dplyr::select (-longitude.y, -slope.x, -aspect.x, -elevation.x) %>% dplyr::rename(slope = slope.y) %>%
@@ -44,7 +52,7 @@ master_cols <- c('id','above.carbon.combusted', 'below.ground.carbon.combusted',
 df <- df %>% select(master_cols)
 
 #create the outpath
-out <- "/mnt/data1/boreal/spotter/combustion/final_files/raw/"
+out <- "/mnt/data1/boreal/spotter/combustion/final_files/raw"
 dir.create(out, recursive = T)
 
 #save the csv to the outpath
@@ -59,7 +67,10 @@ df <-  st_as_sf(df, coords = c("longitude", "latitude"),
 #also get gregorian date
 df <-  df %>% mutate(Date = as.Date(strptime(paste(burn_year, DOB_lst), "%Y %j")))
 
+if (file.exists(file.path(out, 'for_extraction.shp'))){file.remove(file.path(out, 'for_extraction.shp'))}
+
 write_sf(df, file.path(out, 'for_extraction.shp'))
+
 # 
 
 
