@@ -40,7 +40,7 @@ File: get_modis_pixels.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
 Notes: This will pull out based on sols burn detection files pixels that are 100% landsat classified burned
 and 100% vegetated.  200 pixels are then samples and .shp and .tif of these samples are exported, including
-coordinates used for climate_na extraction.
+coordinates used for climate_na extraction. This is for the years 2004, 2006, 2012, 2014 and 2015. 
 
 File: all_above_scenes.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
