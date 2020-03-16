@@ -24,7 +24,7 @@ fwi <- fwi %>% rename_at(vars(matches("MERRA2_")), ~ str_remove(., "MERRA2_")) %
 stand_age <- read_csv(file.path(in_path, 'stand_age_training.csv')) %>% dplyr::select(-burn_year)
 
 #landsat/topo variables from ee
-land_topo <- read_csv(file.path(in_path, 'all_remotely_sensed_extracted.csv')) %>% dplyr::select(-'system:index', -".geo")
+land_topo <- read_csv(file.path(in_path, 'all_remotely_sensed_extracted.csv')) %>% dplyr::select(-'system:index', -".geo", -"burn_year")
 land_topo <- land_topo %>% dplyr::rename(Tree.cover = tree_canopy_cover)
 
 #join it all together
