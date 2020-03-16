@@ -21,5 +21,14 @@ Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
 Notes: This will extract all the stand ages using Beadoin/Pan/historical fires in AK (script not yet attached, but
 the output of the script is linked to this R file) for the training data.
 
--------------------------------------------------------Files for anything associated with model training
+File: join_all_training.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
+Notes: This will join all the spatial files together
+
+-------------------------------------------------------Files for anything associated with scaling
+
+-------------------------------------------------------Files for anything associated with monte carl/predictions
+
+
+
 
