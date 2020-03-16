@@ -36,6 +36,8 @@ combustion/R/scaling/combined is all four of the above pixels above combined, wh
 for the paper.  All EE scripts listed below also have files in my EE account associated with these differen't folders
 except for combustion/R/scaling/combined which was not necessary.
 
+In EE combustion/R/scaling can be referred to as original and 'pure_fire_pure_veg'. 
+
 File: get_modis_pixels.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
 Notes: This will pull out based on sols burn detection files pixels that are 100% landsat classified burned
