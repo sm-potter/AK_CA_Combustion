@@ -52,8 +52,31 @@ since we are comparing the difference in the two scales.
 File: get_all_landsat_modis_centroids.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
 Notes: Convert landsat 30m resolution tiles from jwang to points and intersect with sampled landsat pixels.  
-Export this file as a shp for EE and a csv, which links landsat specific ids to modis specific ids, both individual years (ID2) and all years combined (ID1). 
+Export this file as a shp for EE and a csv, which links landsat specific ids to modis specific ids, both individual years (ID2) 
+and all years combined (ID1). 
 Landsat Ids come with landsat ID first. Also export .csv file with info for climant_na extraction for landsat.
+
+File: extract_points_modis_native
+Location: (ee) users/spotter/default/combustion/pure_fire_pure_veg
+Notes: This will extract all the modis sampled points described above at modis resolution for all spatial variables.
+vegetation indexes come from the MODIS sensor itself, all others come from native sources and then resampled to 500m
+
+File: extract_points_landsat_resample
+Location: (ee) users/spotter/default/combustion/pure_fire_pure_veg
+Notes: This will extract all the modis sampled points described above at modis resolution for all spaital variables,
+but for vegetation indexes, landsat is used at native resolution and then resampled to 500m.
+
+File: extract_points_landsat_native_landsat
+Location: (ee) users/spotter/default/combustion/pure_fire_pure_veg
+Notes: This will extract all the landsat sampled points at landsat resolution for vegetation indices such as NDVI
+NDII, dNBR tasseled cap etc. Tree cover, Soil and topography are also included here. This script applies to any native resolution 
+UNDER 500m. Landsat sensor is used. 
+
+File: extract_points_landsat_native_rest
+Location: (ee) users/spotter/default/combustion/pure_fire_pure_veg
+Notes: This will extract all the modis sampled points for all variables 500m or ABOVE.  While this data is extracted at 
+modis level, it is later joined into the landsat sub pixels which match any given modis pixels.  This was done to save
+compute time.
 
 File: join_elevation.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
