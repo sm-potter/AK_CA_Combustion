@@ -10,10 +10,15 @@ initial <- read_csv(file.path(in_path, 'for_extraction.csv'))
 
 #remove some columns which would be doubled up
 
-initial <- initial %>% dplyr::select(-slope, -aspect, -TWI, -elevation, -VPD)
+initial <- initial %>% dplyr::select(-slope, -aspect, -TWI, -elevation, -VPD, -dNBR)
 
 #fwi 
 fwi <- read_csv(file.path(in_path, 'FWI_training.csv'))
+
+#remove the prefix in column names
+fwi <- fwi %>% rename_at(vars(matches("MERRA2_")), ~ str_remove(., "MERRA2_")) %>% 
+  dplyr::rename(Relative.humidity = rh, Temperature = t, Wind.speed = wdSpd) %>% 
+  select(-snowDepth)
 
 #stand ages
 stand_age <- read_csv(file.path(in_path, 'stand_age_training.csv')) %>% dplyr::select(-burn_year)
