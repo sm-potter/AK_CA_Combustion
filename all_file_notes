@@ -31,6 +31,20 @@ Notes: Optimize the tuning parameters with a random search grid across a series 
 of the R2 across a 10 fold cross validation repeated 100 times.  Output top four models for both stand age and
 not stand age included as well as performance metrics.
 
+File: model_training_rfe_delete.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
+Notes: Run a recursive feature elinination to get most useful variables. Optimize the tuning parameters with a random search 
+grid across a series of models, and compare the distributionof the R2 across a 10 fold cross validation repeated 100 times. 
+
+File: model_training_rfe.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
+Notes: Same as above but includes xgboost.
+
+File: model_training_rfe_bias.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
+Notes: Same as model_training_rfe_delete.R but implements a model to attempt bias correction by attemption to predict
+model residuals.
+
 File: rf_permute.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
 Notes: Fine the significant variables in a random forest for both stand age and not
