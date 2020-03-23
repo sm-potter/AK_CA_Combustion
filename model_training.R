@@ -4,7 +4,7 @@ library(caret)
 library(doSNOW)
 library(ranger)
 library(parallel)
-
+library(viridis)
 
 #set a random seed
 # set.seed(1896) 
@@ -71,7 +71,7 @@ modelnames <- paste(names(getModelInfo()), collapse = ', ')
 
 
 #a function to run all my comparisons
-model_compare <- function(df, out_path){
+model_compare <- function(df, out_path, category){
   
   ##arguments are:
   #df = input tibble which has only the x and y variables, very import y is the first column!!
@@ -79,7 +79,7 @@ model_compare <- function(df, out_path){
   ##
   
   #set up cluster - requires doSNOW, and parallel packages
-  cores <- detectCores() #reduce max cores by 3
+  cores <- detectCores()
   cl <-makeCluster(cores)
   registerDoSNOW(cl)
   
@@ -128,8 +128,36 @@ model_compare <- function(df, out_path){
   
   for_output[1] <- pre_final
   
+  #set the fit control parameter for caret, here is 10 fold cv repeated 3 times
+  set.seed(100)
+  fitControl <- trainControl(method = "repeatedcv",
+                             number = 10,
+                             repeats = 3,
+                             savePredictions = 'final',
+                             index = createResample(df$y, 25),
+                             allowParallel = T)
+  
+  #get the best model parameters with a random grid search
+  # model_xgbtree <- train(y ~., data = df, method = 'xgbTree', tuneLength = 5, metric = 'RMSE', trControl = fitControl)
+  model_ranger <- train(y ~., data = df, method = 'ranger', tuneLength = 10, metric = 'RMSE', trControl = fitControl)
+  model_quantile <- train(y ~., data = df, method = 'qrf', tuneLength = 10, metric = 'RMSE', trControl = fitControl)
+  model_lasso <- train(y ~., data = df, method = 'lasso', tuneLength = 10, metric = 'RMSE', trControl = fitControl)
+  model_ridge <- train(y ~., data = df, method = 'ridge', tuneLength = 10, metric = 'RMSE', trControl = fitControl)
+  # model_gam <- train(y ~., data = df, method = 'bam',  tuneLength = 4, metric = 'RMSE', trControl = fitControl)
+  model_svmlinear <- train(y ~., data = df, method = 'svmLinear2', tuneLength = 5, metric = 'RMSE', trControl = fitControl)
+  model_svmpoly <- train(y~., data = df, method = 'svmPoly', tuneLength = 5, metric = 'RMSE', trControl = fitControl)
+  model_svmradial <- train(y ~., data = df, method = 'svmRadial', tuneLength = 5, metric = 'RMSE', trControl = fitControl)
+  
+  #save a list of tuned model comparisons
+  #save all the models to a list
+  pre_final <- list(model_ranger, model_quantile, model_lasso, model_ridge,
+                    model_svmlinear, 
+                    model_svmpoly, model_svmradial)
+  
+  for_output[1] <- pre_final
+  
   #get estimated model performance with a 10 fold cv repeated 100 times
-  set.seed(200)
+  set.seed(201)
   
   fitControl <- trainControl(method = "repeatedcv",
                              number = 10,
@@ -138,7 +166,15 @@ model_compare <- function(df, out_path){
                              allowParallel = T)
   
   #run the cv
-  model_ranger_final <- train(y ~., data = df, method = 'ranger', tuneGrid=data.frame(.mtry = model_ranger$bestTune$mtry, .splitrule = 'extratrees', .min.node.size = 5), trControl = fitControl)
+  # model_xgbtree_final <- train(y ~., data = df, method = 'xgbTree', tuneGrid=data.frame(.nrounds = model_xgbtree_final$bestTune$nrounds, 
+  #                                                                                       .max_depth = model_xgbtree_final$bestTune$max_depth,
+  #                                                                                       .eta = model_xgbtree_final$bestTune$eta,
+  #                                                                                       .gamma = model_xgbtree_final$bestTune$gamma,
+  #                                                                                       .colsample_bytree = model_xgbtree_final$bestTune$colsample_bytree,
+  #                                                                                       .min_child_weight = model_xgbtree_final$bestTune$min_child_weight,
+  #                                                                                       .subsample, model_xgbtree_final$bestTune$subsample), trControl = fitControl)
+  
+  model_ranger_final <- train(y ~., data = df, method = 'ranger', tuneGrid=data.frame(.mtry = model_ranger$bestTune$mtry, .splitrule = model_ranger$bestTune$splitrule, .min.node.size = model_ranger$bestTune$min.node.size), trControl = fitControl)
   model_quantile_final <- train(y ~., data = df, method = 'qrf', tuneGrid=data.frame(.mtry = model_quantile$bestTune$mtry), trControl = fitControl)
   model_lasso_final <- train(y ~., data = df, method = 'lasso', tuneGrid=data.frame(.fraction = model_lasso$bestTune$fraction), trControl = fitControl)
   model_ridge_final <- train(y ~., data = df, method = 'ridge', tuneGrid=data.frame(.lambda = model_ridge$bestTune$lambda), trControl = fitControl)
@@ -154,7 +190,52 @@ model_compare <- function(df, out_path){
   
   #a list of corresponsing names
   all_names <- list('ranger', 'quantile', 'lasso', 'ridge', 'svmlinear', 'svmpoly', 'svmradial')
-  for_output[2] <- all_names
+  
+  #set the limit based on above or belowground
+  limit <- ifelse(category == 'above', 2, 11)
+  
+  #save a heat map of all observed vs predicted svm radial and ranger
+  compare_radial <- as_tibble(model_svmradial_final$pred)
+  
+  compare_ranger <- as_tibble(model_ranger_final$pred)
+  
+  # Get density of points in 2 dimensions.
+  # @param x A numeric vector.
+  # @param y A numeric vector.
+  # @param n Create a square n by n grid to compute density.
+  # @return The density within each square.
+  get_density <- function(x, y, ...) {
+    dens <- MASS::kde2d(x, y, ...)
+    ix <- findInterval(x, dens$x)
+    iy <- findInterval(y, dens$y)
+    ii <- cbind(ix, iy)
+    return(dens$z[ii])
+  }
+  
+  
+  compare_radial$density <- get_density(compare_radial$obs, compare_radial$pred, n = 100)
+  compare_ranger$density <- get_density(compare_ranger$obs, compare_ranger$pred, n = 100)
+  
+  #save the ranger plot
+  p <- ggplot(compare_ranger)  +
+    geom_point(aes(obs, pred, color = density)) + scale_color_viridis() +
+    labs(x = Observed ~ (kg ~C/m^2), y = Predicted ~ (kg ~C/m^2)) +  
+    xlim(0, limit) + ylim(0, limit) + 
+    geom_abline(intercept = 0, slope = 1, color = 'red', linetype = 'dashed', size = 0.6) +
+    theme_bw() +
+    theme(text=element_text(size=18)) + 
+    ggsave(filename = file.path(out_path,  paste0(category, '_ranger_heat_map.png')), device = 'png', dpi = 150, width = 10, height = 10)
+  
+  
+  p <- ggplot(compare_radial)  +
+    geom_point(aes(obs, pred, color = density)) + scale_color_viridis() +
+    labs(x = Observed ~ (kg ~C/m^2), y = Predicted ~ (kg ~C/m^2)) +  
+    xlim(0, limit) + ylim(0, limit) + 
+    geom_abline(intercept = 0, slope = 1, color = 'red', linetype = 'dashed', size = 0.6) +
+    theme_bw() +
+    theme(text=element_text(size=18)) + 
+    ggsave(filename = file.path(out_path,  paste0(category, '_svm_heat_map.png')), device = 'png', dpi = 150, width = 10, height = 10)
+  
   
   #---get the vectors of all predictions as one df
   final_df <- list()
@@ -179,14 +260,8 @@ model_compare <- function(df, out_path){
   order$Model <- reorder(order$Model, order$Value)
   levels <- levels(order$Model)
   
-  #save to item one in output
-  for_output[3] <- order
-  
   # final_df <- final_df %>% mutate(Model = as.factor(Model)) 
   final_df <- final_df %>% mutate(Model = factor(Model, levels = levels))
-  
-  #save to item one in output
-  for_output[4] <- final_df
   
   #save the final csv
   write_csv(final_df, file.path(out_path, 'repeated_cv.csv'))
@@ -206,53 +281,44 @@ model_compare <- function(df, out_path){
     theme(text=element_text(size=24)) +
     ggsave(filename = file.path(out_path, 'violin_plot.png'), device = 'png', dpi = 150, width = 10, height = 10)
   
-  #save the best tuned model, second best, and third best
-  #get the index of the best model
-  index <- as.character(order$Model)[1]
-
-  #find where in all_names this lies
-  all_names_index <- match(index, all_names)
-
-  #get the tuned final model
-  selected_model <- pre_final[all_names_index]
+  final_ranger <- train(y ~., data = df, method = 'ranger', tuneGrid=data.frame(.mtry = model_ranger$bestTune$mtry, .splitrule = model_ranger$bestTune$splitrule, .min.node.size = model_ranger$bestTune$min.node.size))
+  final_svm <- train(y ~., data = df, method = 'svmRadial', tuneGrid=data.frame(.sigma = model_svmradial$bestTune$sigma, .C = model_svmradial$bestTune$C))
   
-  saveRDS(pre_final, file=file.path(out_path, paste0(index, '.rds')))
   
-  #second best
-  index <- as.character(order$Model)[2]
+  saveRDS(final_ranger, file=file.path(out_path, 'full_model_ranger.rds'))
+  saveRDS(final_svm, file=file.path(out_path, 'full_model_svmradial.rds'))
   
-  #find where in all_names this lies
-  all_names_index <- match(index, all_names)
+  #get full model predictions and rsq
+  all_ranger_predicteds <- predict(final_ranger, newdata=df %>% select(-y))
+  all_svm_predicteds <- predict(final_svm, newdata=df %>% select(-y))
   
-  #get the tuned final model
-  selected_model <- pre_final[all_names_index]
+  full_ranger_rsq = rsq(df$y, all_ranger_predicteds)
+  full_svm_rsq = rsq(df$y, all_svm_predicteds)
   
-  saveRDS(pre_final, file=file.path(out_path, paste0(index, '.rds')))
+  #get obs and preds
+  ranger_compare <- tibble(Obs = df$y, 
+                           Pred = all_ranger_predicteds)
+  svm_compare <- tibble(Obs = df$y, 
+                        Pred = all_svm_predicteds)
   
-  #third best
-  index <- as.character(order$Model)[3]
+  #plot the full model
+  p <- ggplot(ranger_compare, aes(x = Obs, y =  Pred)) + 
+    geom_point() +
+    labs(x = Observed ~ (kg ~C/m^2), y = Predicted ~ (kg ~C/m^2)) +  
+    xlim(0, limit) + ylim(0, limit) + 
+    geom_abline(intercept = 0, slope = 1, color = 'red', linetype = 'dashed', size = 0.6) +
+    theme_bw() +
+    theme(text=element_text(size=18)) + 
+    ggsave(filename = file.path(out_path,  paste0(category, '_ranger_full_model_ob_pred.png')), device = 'png', dpi = 150, width = 10, height = 10)
   
-  #find where in all_names this lies
-  all_names_index <- match(index, all_names)
-  
-  #get the tuned final model
-  selected_model <- pre_final[all_names_index]
-  
-  saveRDS(pre_final, file=file.path(out_path, paste0(index, '.rds')))
-  
-  #fourth best
-  index <- as.character(order$Model)[4]
-  
-  #find where in all_names this lies
-  all_names_index <- match(index, all_names)
-  
-  #get the tuned final model
-  selected_model <- pre_final[all_names_index]
-  
-  saveRDS(pre_final, file=file.path(out_path, paste0(index, '.rds')))
-  
-  #save to item one in output
-  for_output[5] <- p
+  p2 <- ggplot(svm_compare, aes(x = Obs, y =  Pred)) + 
+    geom_point() +
+    labs(x = Observed ~ (kg ~C/m^2), y = Predicted ~ (kg ~C/m^2)) +  
+    xlim(0, limit) + ylim(0, limit) + 
+    geom_abline(intercept = 0, slope = 1, color = 'red', linetype = 'dashed', size = 0.6) +
+    theme_bw() +
+    theme(text=element_text(size=18)) + 
+    ggsave(filename = file.path(out_path,  paste0(category, '_svm_full_model_ob_pred.png')), device = 'png', dpi = 150, width = 10, height = 10)
   
   #stop the cluster
   stopCluster(cl)
@@ -263,25 +329,13 @@ model_compare <- function(df, out_path){
 
 #save out models with different variables
 #with stand age
-above_stand <- model_compare(above, "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/no_sig")
-below_stand <- model_compare(below, "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/no_sig")
+above_stand <- model_compare(above, "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/no_sig", 'above')
+below_stand <- model_compare(below, "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/no_sig", 'below')
 # 
 # #without stand age
-above_stand <- model_compare(above %>% dplyr::select(-stand.age), "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/no_stand_age/no_sig")
-below_stand <- model_compare(below %>% dplyr::select(-stand.age), "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/no_stand_age/no_sig")
+above_stand <- model_compare(above %>% dplyr::select(-stand.age), "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/no_stand_age/no_sig", 'above')
+below_stand <- model_compare(below %>% dplyr::select(-stand.age), "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/no_stand_age/no_sig", 'below')
 
-#now get observed vs predicted values for the full best model across the comparisons
-#need 
-#get the index of the best model
-# index <- as.character(order$Model)[1]
-# 
-# #find where in all_names this lies
-# all_names_index <- match(index,all_names)
-# 
-# #get the tuned final model
-# selected_model <- all_final[all_names_index]
-# 
-# full_model <- train(y ~., data = above, method = 'qrf', tuneGrid=data.frame(.mtry = 2))
 
 
 

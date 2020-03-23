@@ -5,6 +5,7 @@ library(doSNOW)
 library(ranger)
 library(rfPermute)
 library(parallel)
+library(viridis)
 
 #set a random seed
 set.seed(1896) 
@@ -69,7 +70,7 @@ modelnames <- paste(names(getModelInfo()), collapse = ', ')
 # stopCluster(cl)
 
 #create a function to run the permutations
-sig_vars <- function(df, grid_model, out_path){
+sig_vars <- function(df, grid_model, out_path, category){
   
   ##arguments are:
   #df = input tibble which has only the x and y variables, very import y is the first column!!
@@ -78,7 +79,7 @@ sig_vars <- function(df, grid_model, out_path){
   ##
   
   #register parallel processing, requires parallel and doSNOW packages
-  cores <- detectCores()
+  cores <- detectCores() 
   cl <-makeCluster(cores)
   registerDoSNOW(cl)
   
@@ -93,14 +94,30 @@ sig_vars <- function(df, grid_model, out_path){
   
   df[, 2:length(colnames(df))] <- lapply(df[, 2:length(colnames(df))], normalized)
   
+  #set the fit control parameter for caret, here is 10 fold cv repeated 3 times
+  set.seed(100)
+  fitControl <- trainControl(method = "repeatedcv",
+                             number = 10,
+                             repeats = 3,
+                             savePredictions = 'final',
+                             index = createResample(df$y, 25),
+                             allowParallel = T)
+  
+  #get the best model parameters with a random grid search
+  model_ranger <- train(y ~., data = df, method = 'ranger', tuneLength = 10, metric = 'RMSE', trControl = fitControl)
+
+  #save a list of tuned model comparisons
+  #save all the models to a list
+  pre_final <- list(model_ranger)
+  
   #read in the appropriate ranger file from the model_training file
-  train_model <- readRDS(grid_model)
+  train_model <- pre_final[1]
+  
   #ranger is the first element
   train_model <- train_model[[1]]
   
   #rf permute
-  permute <- rfPermute(y ~.,data = df, nrep = 100, num.cores =   cores <- detectCores(),
-                       mtry = train_model$bestTune$mtry)
+  permute <- rfPermute(y ~.,data = df, nrep = 100, mtry = train_model$bestTune$mtry)
   
   #get the importance
   importance <- rp.importance(permute, scale = TRUE, sort.by = NULL, decreasing = TRUE)
@@ -113,18 +130,62 @@ sig_vars <- function(df, grid_model, out_path){
   
   write_csv(importance, file.path(out_path, 'permute_importance.csv'))
   
+  df <- df %>% dplyr::select(y, importance$Variables)
   #run a 10 fold cv 100 times using the new variables to get a new measure of model performance
   set.seed(200)
 
   fitControl <- trainControl(method = "repeatedcv",
                              number = 10,
-                             repeats = 100,
+                             repeats = 3,
                              savePredictions = 'final',
+                             index = createResample(df$y, 25),
                              allowParallel = T)
 
-  # -----for feature elimination
-  model_ranger_final <- train(y ~., data = df, method = 'ranger', tuneGrid=data.frame(.mtry =   train_model$bestTune$mtry, .splitrule = 'extratrees', .min.node.size = 5), trControl = fitControl)
+  # run new parameter tuning
+  model_ranger_param <- train(y ~., data = df, method = 'ranger', tuneLength = 10, trControl = fitControl)
+  
+  #get estimated model performance with a 10 fold cv repeated 100 times
+  set.seed(200)
+  
+  fitControl <- trainControl(method = "repeatedcv",
+                             number = 10,
+                             repeats = 100,
+                             savePredictions = 'final',  
+                             allowParallel = T)
+  
+  model_ranger_final <- train(y ~., data = df, method = 'ranger', tuneGrid=data.frame(.mtry = model_ranger_param$bestTune$mtry, .splitrule = model_ranger_param$bestTune$splitrule, .min.node.size = model_ranger_param$bestTune$min.node.size), trControl = fitControl)
+  
+  #set the limit based on above or belowground
+  limit <- ifelse(category == 'above', 2, 11)
 
+  compare_ranger <- as_tibble(model_ranger_final$pred)
+  
+  # Get density of points in 2 dimensions.
+  # @param x A numeric vector.
+  # @param y A numeric vector.
+  # @param n Create a square n by n grid to compute density.
+  # @return The density within each square.
+  get_density <- function(x, y, ...) {
+    dens <- MASS::kde2d(x, y, ...)
+    ix <- findInterval(x, dens$x)
+    iy <- findInterval(y, dens$y)
+    ii <- cbind(ix, iy)
+    return(dens$z[ii])
+  }
+  
+    compare_ranger$density <- get_density(compare_ranger$obs, compare_ranger$pred, n = 100)
+  
+  #save the ranger plot
+  p <- ggplot(compare_ranger)  +
+    geom_point(aes(obs, pred, color = density)) + scale_color_viridis() +
+    labs(x = Observed ~ (kg ~C/m^2), y = Predicted ~ (kg ~C/m^2)) +  
+    xlim(0, limit) + ylim(0, limit) + 
+    geom_abline(intercept = 0, slope = 1, color = 'red', linetype = 'dashed', size = 0.6) +
+    theme_bw() +
+    theme(text=element_text(size=18)) + 
+    ggsave(filename = file.path(out_path,  paste0(category, '_ranger_heat_map.png')), device = 'png', dpi = 150, width = 10, height = 10)
+  
+  
   #save all the r2
   all_r2 <- model_ranger_final$resample$Rsquared
   med <- median(all_r2, na.rm = T)
@@ -132,24 +193,54 @@ sig_vars <- function(df, grid_model, out_path){
                     Median = med)
   
   write_csv(all_r22, file.path(out_path, 'all_r2.csv'))
+  
+  final_ranger <- train(y ~., data = df, method = 'ranger', tuneGrid=data.frame(.mtry = model_ranger_param$bestTune$mtry, .splitrule = model_ranger_param$bestTune$splitrule, .min.node.size = model_ranger_param$bestTune$min.node.size))
+  
+  #save the final model
+  saveRDS(final_ranger, file=file.path(out_path, 'full_model_ranger.rds'))
+  
+  #get full model predictions and rsq
+  all_ranger_predicteds <- predict(final_ranger, newdata=df %>% select(-y))
+
+  full_ranger_rsq = rsq(df$y, all_ranger_predicteds)
+
+  #get obs and preds
+  ranger_compare <- tibble(Obs = df$y, 
+                           Pred = all_ranger_predicteds)
+ 
+  #plot the full model
+  p <- ggplot(ranger_compare, aes(x = Obs, y =  Pred)) + 
+    geom_point() +
+    labs(x = Observed ~ (kg ~C/m^2), y = Predicted ~ (kg ~C/m^2)) +  
+    xlim(0, limit) + ylim(0, limit) + 
+    geom_abline(intercept = 0, slope = 1, color = 'red', linetype = 'dashed', size = 0.6) +
+    theme_bw() +
+    theme(text=element_text(size=18)) + 
+    ggsave(filename = file.path(out_path,  paste0(category, '_ranger_full_model_ob_pred.png')), device = 'png', dpi = 150, width = 10, height = 10)
+  
   for_output[1] <- importance
+
   return(for_output)
+  stopCluster(cl)
+  
 }
+
 
 s_age_above <- sig_vars(above,
                  "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/no_sig/ranger.rds",
-                 "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/sig")
+                 "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/sig", 'above')
+
 s_age_below <- sig_vars(below,
                  "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/no_sig/ranger.rds",
-                 "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/sig")
+                 "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/sig", 'below')
 
 ns_age_above <- sig_vars(above %>% dplyr::select(-stand.age),
                   "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/no_stand_age/no_sig/ranger.rds",
-                  "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/no_stand_age/sig")
+                  "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/no_stand_age/sig", 'above')
 
 ns_age_below<- sig_vars(below %>% dplyr::select(-stand.age),
                   "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/no_stand_age/no_sig/ranger.rds",
-                  "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/no_stand_age/sig")
+                  "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/no_stand_age/sig", 'below')
 
 
 
