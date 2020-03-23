@@ -1,8 +1,13 @@
 library(tidyverse)
 library(cowplot)
 
+set.seed(807)
+
 #read in all the sites (This is xanthes file which has the actual site id i need for ak)
 df <- read_csv('/mnt/data1/boreal/spotter/combustion/intro_files/text_files/Combustion_SynthesisData_07032019_XJW_CMDUpdate.csv') %>% 
+                #sf.712 is duplicated for some reason (due to data I got), change the one with project.id = BR_AK1.sf.30
+                #to sf.713
+                mutate(id = ifelse((id == 'sf.712' & project.id == 'BR_AK1.sf.30'), 'sf.713', id)) %>%
                 filter(treatment != 'Control') %>%
                 dplyr::select(id, site, project.id, project.name, above.carbon.combusted, below.ground.carbon.combusted)
 
@@ -64,6 +69,8 @@ nwt_error <- nwt_error %>% select(-site) %>% rename(site = plot.name)
 #change g to k/C
 nwt_error <- nwt_error %>% mutate_if(is.numeric, funs(. /1000))
 
+nwt_error <- nwt_error %>% drop_na()
+
 #remove the prefix in df2
 df2 <- df2 %>% mutate(site = str_replace(site, 'NWT_MW_', ''))
 
@@ -74,6 +81,8 @@ nwt_error2 <- left_join(nwt_error, df2 %>% dplyr::select(id, site), by = 'site')
 nwt_error2 <- nwt_error2 %>% dplyr::select(id, std.error.soil.comb) %>% 
   dplyr::rename(BG.Combusted.C.SE = std.error.soil.comb) %>%
   mutate(AB.Combusted.C.SE = NA, project = 'NWT')
+
+nwt_error <- nwt_error %>% drop_na()
 
 #add project names to ak and sk
 ak_error <- ak_error %>% mutate(project = 'AK')
@@ -123,7 +132,6 @@ final <- plot_grid(p1, p2, ncol = 2) +
 #--------------------------------------------run the monte carlo on alaska
 #join the original C vaues from ak back into ak_error
 ak_sub <- df %>% dplyr::filter(project.name == 'AK_Rogers') %>%
-          mutate(id = ifelse((id == 'sf.712' & project.id == 'BR_AK1.sf.30'), 'sf.713', id)) %>%
           dplyr::select(id, above.carbon.combusted, below.ground.carbon.combusted)
          
 
@@ -234,32 +242,102 @@ final_nwt <- left_join(final_nwt, df2 %>% dplyr::select(id, site), by = 'site') 
              select(id, Iter, above.carbon.combusted, below.ground.carbon.combusted)
 
 #join all the monte carlos back together
-all_monte <- rbind(final_ak, final_sk, final_nwt)
+all_known_monte <- rbind(final_ak, final_sk, final_nwt) #271 (22 + 47 + 202) are known error numbers
 
+#this id should not have had a value
+all_known_monte <- all_known_monte %>% filter(id != 'sf.171')
+# #run the monte carlo on the rest of the data which was missing
+
+#---------------------fill missing ids with the covariancew of above and below
 #determine which ids in original df will need to be filled with covariance 
-df <- read_csv("/mnt/data1/boreal/spotter/combustion/final_files/raw/all_predictors.csv")
+df_temp <- read_csv("/mnt/data1/boreal/spotter/combustion/final_files/raw/all_predictors.csv")
 
 #get some columns to remove such as id, latitude etc.
 bad_cols <- c('project.name', 'burn_year', 'latitude', 'longitude')
 
 #remove abovground bad cols
-above <- df %>% dplyr::select(-(bad_cols), -below.ground.carbon.combusted) %>% drop_na()  
+above <- df_temp %>% dplyr::select(-(bad_cols), -below.ground.carbon.combusted) %>% drop_na()  
 above$above.carbon.combusted <- above$above.carbon.combusted/ 1000.0
 
 #remove belowground bad cols
-below <- df %>% dplyr::select(-(bad_cols), -above.carbon.combusted) %>% drop_na()  
+below <- df_temp %>% dplyr::select(-(bad_cols), -above.carbon.combusted) %>% drop_na()  
 below$below.ground.carbon.combusted <- below$below.ground.carbon.combusted / 1000.0
 
-#get above fill
-above_fill <- above %>% filter(! id %in% unique(all_monte$id))
+#remove values in all_known_monte which do not exist in either above or below
+for_keep <- rbind(above %>% select(id), below %>% select(id))
+all_known_monte <- all_known_monte %>% filter(id %in% unique(for_keep$id))
+
+# #get above fill
+above_fill <- above %>% filter(!id %in% unique(all_known_monte$id)) %>%
+  dplyr::select(id, above.carbon.combusted)
 
 #get below fill
-below_fill <- below %>% filter(!id %in% unique(all_monte$id))
+below_fill <- below %>% filter(!id %in% unique(all_known_monte$id)) %>%
+  dplyr::select(id, below.ground.carbon.combusted)
 
 #fill with appropriate covariance
+above_covar <- cov(all_above_error$above.carbon.combusted, all_above_error$AB.Combusted.C.SE)
+below_covar <- cov(all_below_error$below.ground.carbon.combusted, all_below_error$BG.Combusted.C.SE)
 
-#create a final df used for new monte carlo predictions
+above_fill <- above_fill %>% mutate(AB.Combusted.C.SE = above.carbon.combusted * above_covar)
+below_fill <- below_fill %>% mutate(BG.Combusted.C.SE = below.ground.carbon.combusted * below_covar)
 
+#-----------------------------get monte carlo for all the missing above and below
+
+#--------------------------------------------run the monte carlo on SK
+
+#start monte carlo to get new C estimates
+NumSims = 1000 #number of Monte Carlo simulations
+
+#list to store all the dataframes
+final_missing_above <- list()
+final_missing_below <- list()
+
+#start the iteration
+for (counter_MC in 1:NumSims) {
+  
+  print(paste0("Missing Iter = ", counter_MC))
+  #maniuplate the error rates within a normal distribuation
+  a <- rnorm(1, 0,1)
+  b <- rnorm(1, 0,1)
+  
+  above_fill_sub <- above_fill %>% mutate(AB.Combusted.C.SE = AB.Combusted.C.SE * a)
+  below_fill_sub <- below_fill %>% mutate(BG.Combusted.C.SE = BG.Combusted.C.SE * b)
+  
+  #add this new error back to observed C
+  above_fill_sub <- above_fill_sub %>% 
+    mutate(above.carbon.combusted = above.carbon.combusted + AB.Combusted.C.SE, Iter = counter_MC) %>%
+    select(id, Iter, above.carbon.combusted)
+  
+  below_fill_sub <- below_fill_sub %>% 
+    mutate(below.ground.carbon.combusted = below.ground.carbon.combusted + BG.Combusted.C.SE, Iter = counter_MC) %>%
+    select(id, Iter, below.ground.carbon.combusted)
+  
+  final_missing_above[[length(final_missing_above) + 1]] <- above_fill_sub
+  final_missing_below[[length(final_missing_below) + 1]] <- below_fill_sub
+  
+}
+
+
+#bind the rows
+final_missing_above <- bind_rows(final_missing_above)
+final_missing_below <- bind_rows(final_missing_below)
+
+#get all above in one frame
+above_monte <- rbind(final_missing_above, all_known_monte %>% select(id, Iter, above.carbon.combusted))
+#get below in one frame
+below_monte <- rbind(final_missing_below, all_known_monte %>% select(id, Iter, below.ground.carbon.combusted))
+
+#rejoin in the independent variables
+above_monte <- left_join(above_monte, above %>% dplyr::select(-above.carbon.combusted), by = 'id')
+below_monte <- left_join(below_monte, below %>% dplyr::select(-below.ground.carbon.combusted), by = 'id')
+
+out_path <- "/mnt/data1/boreal/spotter/combustion/final_files/monte_carlo"
+dir.create(out_path, recursive = T)
+
+#save out the final data
+write_csv(above_monte, file.path(out_path, 'above_simulations.csv'))
+write_csv(below_monte, file.path(out_path, 'below_simulations.csv'))
 
 ##----------notes
 # for missing sites multiply observed C by mean cv for SE per site, above and below, apply SE same way 
