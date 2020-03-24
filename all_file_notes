@@ -48,6 +48,11 @@ Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
 Notes: Apply weights to samples in the top 90% and 10% quantiles to try to correct bias, ontop of a recursive feature
 elimination. 
 
+File: model_training_colinear_rfe_smoter.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
+Notes: Use the SMOTER algorithm to balance out the classes.  E.g. reduce the small C values and increase the large
+ones with synthetic data.  Package here, https://www.rdocumentation.org/packages/UBL/versions/0.0.6/topics/SmoteRegress
+
 File: model_training_colinear_rfe_bias_linear.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
 Notes: Apply weights to samples in the top 90% and 10% quantiles to try to correct bias, ontop of a recursive feature
