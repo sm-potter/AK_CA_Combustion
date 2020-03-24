@@ -32,16 +32,12 @@ of the R2 across a 10 fold cross validation repeated 100 times.  Output top four
 not stand age included as well as performance metrics. Residual plots are also created as well as the residual 
 error across 10 bins which are smoothed with a loess function for a monte carlo analysis.
 
-File: model_training_rfe_delete.R
+File: model_training_rfe.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
 Notes: Run a recursive feature elinination to get most useful variables. Optimize the tuning parameters with a random search 
 grid across a series of models, and compare the distributionof the R2 across a 10 fold cross validation repeated 100 times. 
 Final model versions for ranger and svm are output. Residual plots are also created as well as the residual 
 error across 10 bins which are smoothed with a loess function for a monte carlo analysis.
-
-File: model_training_rfe.R
-Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
-Notes: Same as above but includes xgboost. Final model versions for ranger and svm are output.
 
 File: model_training_colinear_rfe.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
@@ -56,11 +52,6 @@ File: model_training_colinear_rfe_bias_linear.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
 Notes: Apply weights to samples in the top 90% and 10% quantiles to try to correct bias, ontop of a recursive feature
 elimination. Also attempt to predict residuals with a linear model and then 
-
-File: model_training_rfe_bias.R
-Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
-Notes: Same as model_training_rfe_delete.R but implements a model to attempt bias correction by attemption to predict
-model residuals.
 
 File: rf_permute.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
