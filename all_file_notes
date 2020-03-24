@@ -153,6 +153,13 @@ Export graphs of comparisons and residual plots
 
 
 -------------------------------------------------------Files for anything associated with monte carl/predictions
+File: get_site_SE.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R/monte_carlo
+Notes: This file will compare the observed vs SE plots of both above and belowground emissions in SK, NWT and AK.
+It will also run 1,000 iterations to get new above.carbon.combusted and below.ground.carbon combusted values used for
+final monte carlo predictions.  For samples in above/belowground measurements we don't have monte carlo vaues 
+the SE is filled with the linear regression of the observed vs SE plots.
+
 File: extract_points_landsat_native_rest
 Location: (ee) users/spotter/default/combustion/export_predictors
 Notes: Export at 500m all predictors except for VI and tasseled cap
