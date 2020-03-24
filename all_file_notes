@@ -43,6 +43,20 @@ File: model_training_rfe.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
 Notes: Same as above but includes xgboost. Final model versions for ranger and svm are output.
 
+File: model_training_colinear_rfe.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
+Notes: Train with rfe but also use a colinearity removal
+
+File: model_training_colinear_rfe_weights.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
+Notes: Apply weights to samples in the top 90% and 10% quantiles to try to correct bias, ontop of a recursive feature
+elimination. 
+
+File: model_training_colinear_rfe_bias_linear.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
+Notes: Apply weights to samples in the top 90% and 10% quantiles to try to correct bias, ontop of a recursive feature
+elimination. Also attempt to predict residuals with a linear model and then 
+
 File: model_training_rfe_bias.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
 Notes: Same as model_training_rfe_delete.R but implements a model to attempt bias correction by attemption to predict
