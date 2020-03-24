@@ -153,7 +153,8 @@ Export graphs of comparisons and residual plots
 
 
 -------------------------------------------------------Files for anything associated with monte carl/predictions
-
-
+File: extract_points_landsat_native_rest
+Location: (ee) users/spotter/default/combustion/export_predictors
+Notes: Export at 500m all predictors except for VI and tasseled cap
 
 
