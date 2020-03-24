@@ -196,8 +196,10 @@ model_compare <- function(df, out_path, category){
   
   #save a heat map of all observed vs predicted svm radial and ranger
   compare_radial <- as_tibble(model_svmradial_final$pred)
+  compare_radial <- compare_radial %>% mutate(Resids = obs - pred)
   
   compare_ranger <- as_tibble(model_ranger_final$pred)
+  compare_ranger <- compare_ranger %>% mutate(Resids = obs - pred)
   
   # Get density of points in 2 dimensions.
   # @param x A numeric vector.
@@ -212,9 +214,14 @@ model_compare <- function(df, out_path, category){
     return(dens$z[ii])
   }
   
-  
+  #get density
   compare_radial$density <- get_density(compare_radial$obs, compare_radial$pred, n = 100)
   compare_ranger$density <- get_density(compare_ranger$obs, compare_ranger$pred, n = 100)
+  
+  #get density of residuals
+  compare_radial$density2 <- get_density(compare_radial$obs, compare_radial$Resids, n = 100)
+  compare_ranger$density2 <- get_density(compare_ranger$obs, compare_ranger$Resids, n = 100)
+  
   
   #save the ranger plot
   p <- ggplot(compare_ranger)  +
@@ -226,8 +233,8 @@ model_compare <- function(df, out_path, category){
     theme(text=element_text(size=18)) + 
     ggsave(filename = file.path(out_path,  paste0(category, '_ranger_heat_map.png')), device = 'png', dpi = 150, width = 10, height = 10)
   
-  
-  p <- ggplot(compare_radial)  +
+  #save the svm plot
+  p2 <- ggplot(compare_radial)  +
     geom_point(aes(obs, pred, color = density)) + scale_color_viridis() +
     labs(x = Observed ~ (kg ~C/m^2), y = Predicted ~ (kg ~C/m^2)) +  
     xlim(0, limit) + ylim(0, limit) + 
@@ -236,6 +243,61 @@ model_compare <- function(df, out_path, category){
     theme(text=element_text(size=18)) + 
     ggsave(filename = file.path(out_path,  paste0(category, '_svm_heat_map.png')), device = 'png', dpi = 150, width = 10, height = 10)
   
+  #save the residual plots
+  p3 <- ggplot(compare_ranger)  +
+    geom_point(aes(obs, Resids, color = density2)) + scale_color_viridis() +
+    labs(x = Observed ~ (kg ~C/m^2), y = Residual ~ (kg ~C/m^2)) +  
+    theme_bw() +
+    theme(text=element_text(size=18)) + 
+    ggsave(filename = file.path(out_path,  paste0(category, '_ranger_residuals.png')), device = 'png', dpi = 150, width = 10, height = 10)
+  
+  
+  p4 <- ggplot(compare_radial)  +
+    geom_point(aes(obs, Resids, color = density2)) + scale_color_viridis() +
+    labs(x = Observed ~ (kg ~C/m^2), y = Residual ~ (kg ~C/m^2)) +  
+    theme_bw() +
+    theme(text=element_text(size=18)) + 
+    ggsave(filename = file.path(out_path,  paste0(category, '_svm_residuals.png')), device = 'png', dpi = 150, width = 10, height = 10)
+  
+  
+  #get the quantiles
+  quantile_ranger <- compare_ranger %>% mutate(Quartiles = ntile(pred, 10))
+  quantile_svm <- compare_radial %>% mutate(Quartiles = ntile(pred, 10))
+  
+  # #get the mean Residual per quartile
+  mean_ranger_quantile_resid <- quantile_ranger %>% group_by(Quartiles) %>% dplyr::summarize(Resids = sd(Resids), Preds = max(pred))
+  
+  #get the loess function
+  ranger_loess <- loess(Resids ~ Quartiles, data = mean_ranger_quantile_resid)
+  ranger_loess <- predict(ranger_loess, mean_ranger_quantile_resid %>% dplyr::select(Quartiles))
+  mean_ranger_quantile_resid <- mean_ranger_quantile_resid %>% mutate(Loess = ranger_loess)
+  write_csv(mean_ranger_quantile_resid, file.path(out_path,  paste0(category, '_ranger_resid_smoothed.csv')))
+  
+  mean_svm_quantile_resid <- quantile_svm %>% group_by(Quartiles) %>% dplyr::summarize(Resids = sd(Resids), Preds = max(pred))
+  
+  #get the loess function
+  svm_loess <- loess(Resids ~ Quartiles, data = mean_svm_quantile_resid)
+  svm_loess <- predict(svm_loess, mean_svm_quantile_resid %>% dplyr::select(Quartiles))
+  mean_svm_quantile_resid <- mean_svm_quantile_resid %>% mutate(Loess = ranger_loess)
+  write_csv(mean_svm_quantile_resid, file.path(out_path, paste0(category, '_svm_resid_smoothed.csv')))
+  
+  bins <- ggplot(mean_ranger_quantile_resid, aes(x = Quartiles, y = Resids)) + 
+    geom_line() + 
+    geom_point() + 
+    geom_smooth(method = 'loess') + 
+    ylab('SD of Residuals') +
+    theme_bw() +
+    theme(text=element_text(size=18)) + 
+    ggsave(filename = file.path(out_path,  paste0(category, '_ranger_smoothed.png')), device = 'png', dpi = 150, width = 10, height = 10)
+  
+  bins2 <- ggplot(mean_svm_quantile_resid, aes(x = Quartiles, y = Resids)) + 
+    geom_line() + 
+    geom_point() + 
+    geom_smooth(method = 'loess') + 
+    ylab('SD of Residuals') +
+    theme_bw() +
+    theme(text=element_text(size=18)) + 
+    ggsave(filename = file.path(out_path,  paste0(category, '_svm_smoothed.png')), device = 'png', dpi = 150, width = 10, height = 10)
   
   #---get the vectors of all predictions as one df
   final_df <- list()
@@ -319,6 +381,7 @@ model_compare <- function(df, out_path, category){
     theme_bw() +
     theme(text=element_text(size=18)) + 
     ggsave(filename = file.path(out_path,  paste0(category, '_svm_full_model_ob_pred.png')), device = 'png', dpi = 150, width = 10, height = 10)
+  
   
   #stop the cluster
   stopCluster(cl)

@@ -173,7 +173,8 @@ sig_vars <- function(df, grid_model, out_path, category){
     return(dens$z[ii])
   }
   
-    compare_ranger$density <- get_density(compare_ranger$obs, compare_ranger$pred, n = 100)
+  compare_ranger$density <- get_density(compare_ranger$obs, compare_ranger$pred, n = 100)
+  compare_ranger$density2 <- get_density(compare_ranger$obs, compare_ranger$Resids, n = 100)
   
   #save the ranger plot
   p <- ggplot(compare_ranger)  +
@@ -184,6 +185,35 @@ sig_vars <- function(df, grid_model, out_path, category){
     theme_bw() +
     theme(text=element_text(size=18)) + 
     ggsave(filename = file.path(out_path,  paste0(category, '_ranger_heat_map.png')), device = 'png', dpi = 150, width = 10, height = 10)
+  
+  #save the residual plots
+  p3 <- ggplot(compare_ranger)  +
+    geom_point(aes(obs, Resids, color = density2)) + scale_color_viridis() +
+    labs(x = Observed ~ (kg ~C/m^2), y = Residual ~ (kg ~C/m^2)) +  
+    theme_bw() +
+    theme(text=element_text(size=18)) + 
+    ggsave(filename = file.path(out_path,  paste0(category, '_ranger_residuals.png')), device = 'png', dpi = 150, width = 10, height = 10)
+  
+  #get the quantiles
+  quantile_ranger <- compare_ranger %>% mutate(Quartiles = ntile(pred, 10))
+  
+  # #get the mean Residual per quartile
+  mean_ranger_quantile_resid <- quantile_ranger %>% group_by(Quartiles) %>% dplyr::summarize(Resids = sd(Resids), Preds = max(pred))
+  
+  #get the loess function
+  ranger_loess <- loess(Resids ~ Quartiles, data = mean_ranger_quantile_resid)
+  ranger_loess <- predict(ranger_loess, mean_ranger_quantile_resid %>% dplyr::select(Quartiles))
+  mean_ranger_quantile_resid <- mean_ranger_quantile_resid %>% mutate(Loess = ranger_loess)
+  write_csv(mean_ranger_quantile_resid, file.path(out_path, paste0(category,'_ranger_resid_smoothed.csv')))
+  
+  bins <- ggplot(mean_ranger_quantile_resid, aes(x = Quartiles, y = Resids)) + 
+    geom_line() + 
+    geom_point() + 
+    geom_smooth(method = 'loess') + 
+    ylab('SD of Residuals') +
+    theme_bw() +
+    theme(text=element_text(size=18)) + 
+    ggsave(filename = file.path(out_path,  paste0(category, '_ranger_smoothed.png')), device = 'png', dpi = 150, width = 10, height = 10)
   
   
   #save all the r2
