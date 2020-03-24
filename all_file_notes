@@ -144,6 +144,68 @@ Export graphs of comparisons and residual plots
 
 
 -------------------------------------------------------Files for anything associated with monte carl/predictions
+File: warp_topo.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
+Notes: This file will take all the topographic variables downloaded from EE and mosaic them.
+
+File: warp_topo_final.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
+Notes: This file will take all the mosaiced variables and warp them (due to bad EE grid) as well as grid to 
+Sols grid.
+
+File: warp_tree_cover.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
+Notes: This file will take all the landsat tree_cover variables downloaded from EE and mosaic them.
+
+File: warp_tree_cover_final.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
+Notes: This file will take all the landsat tree_cove variables and warp them (due to bad EE grid) as well as grid to 
+Sols grid.
+
+File: warp_30m.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
+Notes: This file will take all the landsat VI variables downloaded from EE and mosaic them.
+
+File: warp_30m_final.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
+Notes: This file will take all the landsat VI variables and warp them (due to bad EE grid) as well as grid to 
+Sols grid.
+
+File: warp_250m.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
+Notes: This file will take all the 250m (soil) variables downloaded from EE and mosaic them.
+
+File: warp_250m_final.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
+Notes: This file will take all the 250m (soil) variables and warp them (due to bad EE grid) as well as grid to 
+Sols grid.
+
+File: warp_500m.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
+Notes: This file will take all the 500m (soil) variables downloaded from EE and mosaic them.
+
+File: warp_500m_final.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
+Notes: This file will take all the 500m variables and warp them (due to bad EE grid) as well as grid to 
+Sols grid.
+
+File: warp_1000m.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
+Notes: This file will take all the 100m (Gruber) variables downloaded from EE and mosaic them.
+
+File: warp_1000m_final.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
+Notes: This file will take all the 1000m (Gruber) variables and warp them (due to bad EE grid) as well as grid to 
+Sols grid.
+
+File: warp_for_ee.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
+Notes: This file will take all the stand ages and convert to modis grid for uploading to EE.
+
+File: warp_for_ee2.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
+Notes: This file will take all the land cover types from Brendan and convert to modis grid for uploading to EE.
+
 File: get_site_SE.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R/monte_carlo
 Notes: This file will compare the observed vs SE plots of both above and belowground emissions in SK, NWT and AK.
