@@ -39,6 +39,18 @@ grid across a series of models, and compare the distributionof the R2 across a 1
 Final model versions for ranger and svm are output. Residual plots are also created as well as the residual 
 error across 10 bins which are smoothed with a loess function for a monte carlo analysis.
 
+File: model_training_rfe_no_age.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
+Notes: Same as model_training_rfe.R but remove stand age from the training set
+
+File: model_training_rfe_no_fwi.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
+Notes: Same as model_training_rfe.R but remove fwi's from the training set
+
+File: model_training_rfe_no_fwi_age.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
+Notes: Same as model_training_rfe.R but remove fwi's and agefrom the training set
+
 File: model_training_colinear_rfe.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
 Notes: Train with rfe but also use a colinearity removal
@@ -165,6 +177,15 @@ Notes: This file will take all the landsat tree_cover variables downloaded from 
 File: warp_tree_cover_final.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
 Notes: This file will take all the landsat tree_cove variables and warp them (due to bad EE grid) as well as grid to 
+Sols grid.
+
+File: warp_modis_vi.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
+Notes: This file will take all the MODIS VI variables and tree cover downloaded from EE and mosaic them.
+
+File: warp_modis_vi_final.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
+Notes: This file will take all the modis VI variables and tree ocver and warp them (due to bad EE grid) as well as grid to 
 Sols grid.
 
 File: warp_30m.R
