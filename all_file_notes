@@ -153,9 +153,10 @@ Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
 Notes: Join all the variables together such as FWI, CNA, DOB and spatial variables from EE
 
 File: predict_samples.R
-Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R/scaling
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R/scaling
 Notes: Run the predictions on the scaled data and do the bias correction with a linear model.
-Export graphs of comparisons and residual plots
+Export graphs of comparisons and residual plots and the linear model for all four model versions of all vars, no FWI,
+now stand age and no FWI and stand age
 
 
 
