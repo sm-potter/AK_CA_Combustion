@@ -7,10 +7,12 @@ g_vars <- c('Year', 'id1', 'id2', 'PPT_sm',
 'Tmax_sm', 'MAT', 'MAP', 'MAR', 'CMD', 'PAS', 
 'NFFD', 'TD')
 
-ann_g_vars <- c('Year', 'id1', 'id2', 'MAT', 'MAP', 'MAR', 'CMD', 'PAS', 'NFFD', 'TD')
+ann_g_vars <- c("Year", "id1", "id2", "MAT", "MWMT", "MCMT", "TD", "MAP", "MSP", "AHM", "SHM", "DD_0", "DD5",      
+                 "DD_18", "DD18", "NFFD", "bFFP", "eFFP", "FFP" , "PAS" , "EMT",      
+                 "EXT", "Eref", "CMD","MAR", "RH")
 
-seas_g_vars <- c('Year', 'id1', 'id2',  'PPT_sm',
-                 'Tmax_sm')
+seas_g_vars <- c('Year', 'id1', 'id2', "Tmax_sm", "PPT_sm", "Rad_sm", "DD_0_sm", "DD5_sm", "DD_18_sm",
+                 "DD18_sm", "NFFD_sm", "PAS_sm", "Eref_sm", "CMD_sm", "RH_sm", "Tave_sm", "Tmin_sm")
 
 #---------------------get all annual landsat
 one <- read_csv("/mnt/data1/boreal/spotter/combustion/burned_area/scaling/climateNA/output/landsat_final_1981-2010YT.csv") %>% dplyr::select(ann_g_vars, -id1)
