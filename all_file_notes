@@ -12,6 +12,10 @@ Notes:  This script will take all the training pts from prepare_all_spatial_vars
 rbr, and rdnbr from harmonized landsat. It will also get pat burnd dem variable such as elevation, aspect, slope and twi.
 Note that twi here was processed on cloud ops, no definitive script to link at this point.
 
+File: create_soil_integrals
+Location: (ee) users/spotter/default
+Notes:  Take the integrals for all the soil variables, this was faster than in R
+
 File: fwi_extract_training.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R
 Notes: This will extract all the GFWED v2.5 FWI indices for the training data
@@ -246,11 +250,11 @@ Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R/
 Notes: This file will extract all the native resolution 500m vegetation (JP, WS etc) predictors and replace the EE 
 aquired ones used in all the scaling excersises (e.g. /mnt/data1/boreal/spotter/scripts/combustion/R/scaling/join_all_vars_new.R)
 
-File: extract_predictors
+File: export_predictors
 Location: (ee) users/spotter/default/combustion/export_predictors
 Notes: Export at 500m all predictors except for VI and tasseled cap
 
-File: extract_vi_predictors
+File: export_vi_predictors
 Location: (ee) users/spotter/default/combustion/export_predictors
 Notes: Export at 500m  for VI and tasseled cap using LANDSAT
 
