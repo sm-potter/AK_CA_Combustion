@@ -66,6 +66,9 @@ mod_native <- mod_native %>% dplyr::rename(stand.age = stand_age)
 out = "/mnt/data1/boreal/spotter/combustion/burned_area/scaling/modis_pixels/predictors"
 dir.create(out, recursive = T)
 
+veg <- read_csv("/mnt/data1/boreal/spotter/combustion/burned_area/scaling/modis_pixels/veg.csv") 
+mod_native <- mod_native %>% dplyr::select(-BS, -DEC, -GRSH, -JP, -WS, -OCON, -NV)
+mod_native <- left_join(mod_native, veg, by = 'ID2')
 write_csv(mod_native, file.path(out, 'all_modis_predictors.csv'))
 
 #----------------------join all variables for landsat native (which is how models were trained)
@@ -117,6 +120,10 @@ land_to_mod <- land_to_mod %>% dplyr::rename(CNA_Eref_5_8 = CNA_Eref_sm)
 land_to_mod <- land_to_mod %>% dplyr::rename(CNA_CMD_5_8 = CNA_CMD_sm)
 land_to_mod <- land_to_mod %>% dplyr::rename(CNA_RH_5_8 = CNA_RH_sm)
 land_to_mod <- land_to_mod %>% dplyr::rename(stand.age = stand_age)
+
+veg <- read_csv("/mnt/data1/boreal/spotter/combustion/burned_area/scaling/modis_pixels/veg.csv") 
+land_to_mod <- land_to_mod %>% dplyr::select(-BS, -DEC, -GRSH, -JP, -WS, -OCON, -NV)
+land_to_mod <- left_join(land_to_mod, veg, by = 'ID2')
 
 write_csv(land_to_mod, file.path(out, 'all_landsat_native_predictors.csv'))
 
@@ -178,5 +185,9 @@ land_native <- land_native %>% dplyr::rename(stand.age = stand_age)
 
 out = "/mnt/data1/boreal/spotter/combustion/burned_area/scaling/landsat_pixels/predictors"
 dir.create(out, recursive = T)
+
+veg <- read_csv("/mnt/data1/boreal/spotter/combustion/burned_area/scaling/modis_pixels/veg.csv") 
+land_native <- land_native %>% dplyr::select(-BS, -DEC, -GRSH, -JP, -WS, -OCON, -NV)
+land_native <- left_join(land_native, veg, by = 'ID2')
 
 write_csv(land_native, file.path(out, 'all_landsat_resampled_predictors.csv'))

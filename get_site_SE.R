@@ -275,12 +275,27 @@ above_fill <- above %>% filter(!id %in% unique(all_known_monte$id)) %>%
 below_fill <- below %>% filter(!id %in% unique(all_known_monte$id)) %>%
   dplyr::select(id, below.ground.carbon.combusted)
 
-#fill with appropriate covariance
-above_covar <- cov(all_above_error$above.carbon.combusted, all_above_error$AB.Combusted.C.SE)
-below_covar <- cov(all_below_error$below.ground.carbon.combusted, all_below_error$BG.Combusted.C.SE)
+#create linear models to fill in the data, predict SE with C
+above_lm <- lm(AB.Combusted.C.SE ~ above.carbon.combusted, data = all_above_error)
+below_lm <- lm(BG.Combusted.C.SE ~ below.ground.carbon.combusted, data = all_below_error)
 
-above_fill <- above_fill %>% mutate(AB.Combusted.C.SE = above.carbon.combusted * above_covar)
-below_fill <- below_fill %>% mutate(BG.Combusted.C.SE = below.ground.carbon.combusted * below_covar)
+#predict above samples
+above_pred <- predict(above_lm, above_fill %>% select(above.carbon.combusted))
+below_pred <- predict(below_lm, below_fill %>% select(below.ground.carbon.combusted))
+
+#predict below samples
+
+
+#make new dataframes with filled_data
+above_fill <- above_fill %>% mutate(AB.Combusted.C.SE = above_pred)
+below_fill <- below_fill %>% mutate(BG.Combusted.C.SE = below_pred)
+
+
+# above_covar <- cov(all_above_error$above.carbon.combusted, all_above_error$AB.Combusted.C.SE)
+# below_covar <- cov(all_below_error$below.ground.carbon.combusted, all_below_error$BG.Combusted.C.SE)
+# 
+# above_fill <- above_fill %>% mutate(AB.Combusted.C.SE = above.carbon.combusted * above_covar)
+# below_fill <- below_fill %>% mutate(BG.Combusted.C.SE = below.ground.carbon.combusted * below_covar)
 
 #-----------------------------get monte carlo for all the missing above and below
 

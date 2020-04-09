@@ -13,7 +13,7 @@ library(kernlab)
 library(lmodel2)
 
 
-#combined all the data
+#combined_typ2 all the data
 # mod_native <- read_csv("/mnt/data1/boreal/spotter/combustion/burned_area/scaling/pure_fire_mixed_veg/modis_pixels/predictors/all_modis_predictors.csv") %>% mutate(ID2 = paste0(ID2, '_one'))
 # land_to_modis <- read_csv("/mnt/data1/boreal/spotter/combustion/burned_area/scaling/pure_fire_mixed_veg/landsat_pixels/predictors/all_landsat_resampled_predictors.csv") %>% mutate(ID2 = paste0(ID2, '_one'))
 # land_native <- read_csv("/mnt/data1/boreal/spotter/combustion/burned_area/scaling/pure_fire_mixed_veg/landsat_pixels/predictors/all_landsat_native_predictors.csv") %>% mutate(ID2 = paste0(ID2, '_one'))
@@ -43,6 +43,7 @@ set.seed(170)
 
 #read in the training data
 df <- read_csv("/mnt/data1/boreal/spotter/combustion/final_files/raw/all_predictors.csv")
+df <- df %>% mutate(PFI = ifelse(is.na(PFI), 0, PFI))
 
 #shuffle the dataframe
 df <- df[sample(1:nrow(df)), ]
@@ -70,8 +71,8 @@ scaling <- function(df, in_model, out_path, importance, category){
   registerDoSNOW(cl)
   
   #set the limit based on above or belowground
-  limit1 <- ifelse(category == 'above', 0, 1.5)
-  limit2 <- ifelse(category == 'above', 0.75, 4)
+  limit1 <- ifelse(category == 'above', 0, 1)
+  limit2 <- ifelse(category == 'above', 1.2, 4)
   
   #create the outpath in case it doesn't exist
   dir.create(out_path, recursive = T)
@@ -98,19 +99,34 @@ scaling <- function(df, in_model, out_path, importance, category){
   
   #final model
   model_ranger_final <- train(y ~., data = df, method = 'ranger', tuneGrid=data.frame(.mtry = final_model$bestTune$mtry, .splitrule = final_model$bestTune$splitrule, .min.node.size = final_model$bestTune$min.node.size))
+  model_ranger_final2 <- ranger(y ~., data = df, mtry = final_model$bestTune$mtry, splitrule = final_model$bestTune$splitrule, min.node.size = final_model$bestTune$min.node.size)
   
+  #try full model
+  #get full model predictions and rsq
+  all_ranger_predicteds <- predict(model_ranger_final, newdata=df %>% select(-y))
+
+  # full_ranger_rsq = rsq(df$y, all_ranger_predicteds)
+
+  #get obs and preds
+  ranger_compare <- tibble(Obs = df$y, 
+                           Pred = all_ranger_predicteds)
+ 
   
   #read in the modis native to predict on
   mod_native <- read_csv("/mnt/data1/boreal/spotter/combustion/burned_area/scaling/combined/modis_pixels/predictors/all_modis_predictors.csv") %>% dplyr::select(-ID2) %>% drop_na()
-  mod_native <- mod_native %>% dplyr::select(names(raw))
+  mod_native <- mod_native %>% rename(Sand_30 = Clay_30)
+  mod_native <- mod_native %>% rename(Clay_30 = Clay_30_1)
   
   #rescale some values in mod_native
-  mod_native <- mod_native %>% mutate(dNBR = dNBR / 1000)
-  mod_native <- mod_native %>% mutate(NDVI = NDVI / 1000)
-  mod_native <- mod_native %>% mutate(NDII = NDII / 1000)
-  mod_native <- mod_native %>% mutate(rdnbr = rdnbr / 1000)
-  
-  
+  # mod_native <- mod_native %>% mutate(dNBR = dNBR / 1000)
+  # mod_native <- mod_native %>% mutate(NDVI = NDVI / 1000)
+  # mod_native <- mod_native %>% mutate(NDII = NDII / 1000)
+  # mod_native <- mod_native %>% mutate(rdnbr = rdnbr / 1000)
+  # mod_native <- mod_native %>% mutate(Clay_30 = Clay_30 / 1000)
+  # mod_native <- mod_native %>% mutate(Sand_30 = Sand_30 / 1000)
+  mod_native <- mod_native %>% mutate(SOC_30 = SOC_30 *1000)
+  mod_native <- mod_native %>% mutate(BD_30 = BD_30 / 10000)
+
   #change the min and max of all the appropriate columns
   
   #normalize variables
@@ -119,23 +135,35 @@ scaling <- function(df, in_model, out_path, importance, category){
   
   #read in the landsat resampled to predict on
   land_to_modis <- read_csv("/mnt/data1/boreal/spotter/combustion/burned_area/scaling/combined/landsat_pixels/predictors/all_landsat_resampled_predictors.csv") %>% dplyr::select(-ID2) %>% drop_na()
-  
+  land_to_modis <- land_to_modis %>% rename(Sand_30 = Clay_30)
+  land_to_modis <- land_to_modis %>% rename(Clay_30 = Clay_30_1)
   #rescale some values in mod_native
-  land_to_modis <- land_to_modis %>% mutate(dNBR = dNBR / 1000)
-  land_to_modis <- land_to_modis %>% mutate(NDVI = NDVI / 1000)
-  land_to_modis <- land_to_modis %>% mutate(NDII = NDII / 1000)
-  land_to_modis <- land_to_modis %>% mutate(rdnbr = rdnbr / 1000)
+  # land_to_modis <- land_to_modis %>% mutate(dNBR = dNBR / 1000)
+  # land_to_modis <- land_to_modis %>% mutate(NDVI = NDVI / 1000)
+  # land_to_modis <- land_to_modis %>% mutate(NDII = NDII / 1000)
+  # land_to_modis <- land_to_modis %>% mutate(rdnbr = rdnbr / 1000)
+  # land_to_modis <- land_to_modis %>% mutate(Clay_30 = Clay_30 / 1000)
+  # land_to_modis <- land_to_modis %>% mutate(Sand_30 = Sand_30 / 1000)
+  land_to_modis <- land_to_modis %>% mutate(SOC_30 = SOC_30 *1000)
+  land_to_modis <- land_to_modis %>% mutate(BD_30 = BD_30 / 10000)
   
+
   land_to_modis[, 1:length(colnames(land_to_modis))] <- lapply(land_to_modis[, 1:length(colnames(land_to_modis))], normalized)
   
   #read in the landsat native to predict on
   land_native <- read_csv("/mnt/data1/boreal/spotter/combustion/burned_area/scaling/combined/landsat_pixels/predictors/all_landsat_native_predictors.csv") %>% dplyr::select(-ID2, -land_ID1) %>% drop_na()
-  
+  land_native <- land_native %>% rename(Sand_30 = Clay_30)
+  land_native<- land_native %>% rename(Clay_30 = Clay_30_1)
   #rescale some values in mod_native
-  land_native <- land_native %>% mutate(dNBR = dNBR / 1000)
-  land_native <- land_native %>% mutate(NDVI = NDVI / 1000)
-  land_native <- land_native %>% mutate(NDII = NDII / 1000)
-  land_native <- land_native %>% mutate(rdnbr = rdnbr / 1000)
+  # land_native <- land_native %>% mutate(dNBR = dNBR / 1000)
+  # land_native <- land_native %>% mutate(NDVI = NDVI / 1000)
+  # land_native <- land_native %>% mutate(NDII = NDII / 1000)
+  # land_native <- land_native %>% mutate(rdnbr = rdnbr / 1000)
+  # land_native <- land_native %>% mutate(Clay_30 = Clay_30 / 1000)
+  # land_native <- land_native %>% mutate(Sand_30 = Sand_30 / 1000)
+  # land_native <- land_native %>% mutate(SOC_30 = SOC_30 / 1000)
+  land_native  <- land_native  %>% mutate(SOC_30 = SOC_30 *1000)
+  land_native  <- land_native  %>% mutate(BD_30 = BD_30 / 10000)
   
   land_native[, 1:length(colnames(land_native))] <- lapply(land_native[, 1:length(colnames(land_native))], normalized)
   
@@ -153,15 +181,28 @@ scaling <- function(df, in_model, out_path, importance, category){
   #predict land native
   land_native_pred <- predict(model_ranger_final, newdata=land_native, cl = cl)
   
+  compare = tibble(Class = c('MODIS_Native'),
+                   Values = mod_predict)
+  compare2 = tibble(Class = c('Landsat_Resampled'),
+                   Values = land_mod_pred)
+  compare3 = tibble(Class = c('Landsat_Native'),
+                   Values = land_native_pred)
+  
+  compare <- rbind(compare, compare2, compare3)
+  
+  hist <- ggplot(compare, aes(x=Values, colour = Class)) + 
+    geom_density() +
+    ggsave(filename = file.path(out_path, 'density.png'), device = 'png', dpi = 150, width = 10, height = 10)
+  
   land_native <- read_csv("/mnt/data1/boreal/spotter/combustion/burned_area/scaling/combined/landsat_pixels/predictors/all_landsat_native_predictors.csv")
   
-  #combined land_native_pred back to original frame and take mean prediction by ID2 (which is what matches modis original)
+  #combined_typ2 land_native_pred back to original frame and take mean prediction by ID2 (which is what matches modis original)
   land_native_pred <- land_native %>% drop_na() %>% dplyr::select(ID2, land_ID1) %>% dplyr::mutate(land_native = land_native_pred)
   
   #groupby and mean by ID2
   land_native_pred <- land_native_pred %>% group_by(ID2) %>% dplyr::summarize(land_native = mean(land_native, na.rm = T))
   
-  #combined mod native and land resam back to original frames
+  #combined_typ2 mod native and land resam back to original frames
   mod_native <- read_csv("/mnt/data1/boreal/spotter/combustion/burned_area/scaling/combined/modis_pixels/predictors/all_modis_predictors.csv")
   mod_predict <- mod_native %>% drop_na() %>% dplyr::select(ID2) %>% dplyr::mutate(mod_native = mod_predict)
   
@@ -176,23 +217,28 @@ scaling <- function(df, in_model, out_path, importance, category){
   #-------------start bias correction for landsat native to modis native
   
   #regress Modis Native to Land Native, using landsat as Y and modis as X
-  linearMod <- lm(land_native ~ mod_native, data=all_compare)
+  # linearMod <- lm(land_native ~ mod_native, data=all_compare)
+  # 
+  # #save the linear model
+  # saveRDS(linearMod, file.path(out_path, 'linear_model.rds'))
+  # 
+  # #save the final formuala
+  # all_compare <- all_compare %>% dplyr::mutate(Mod_Corrected = linearMod$coefficients[1] + (linearMod$coefficients[2] * mod_native))
+  # 
+  # all_compare <- all_compare %>% dplyr::mutate(Residual = land_native - Mod_Corrected)
   
-  #save the linear model
+  # type 2 linear Model
+  linearMod <- lmodel2(land_native ~ mod_native, data=all_compare)$regression.results
+  
   saveRDS(linearMod, file.path(out_path, 'linear_model.rds'))
   
-  #save the final formuala
-  all_compare <- all_compare %>% dplyr::mutate(Mod_Corrected = linearMod$coefficients[1] + (linearMod$coefficients[2] * mod_native))
-  
-  #type 2 linear Model
-  # linearMod <- lmodel2(land_native ~ mod_native, data=all_compare)$regression.results
+  linearMod <- as_tibble(linearMod[, 1:3]) %>% dplyr::filter(Method == 'SMA')
+
+
+  #final formulate type2
+  all_compare <- all_compare %>% dplyr::mutate(Mod_Corrected = linearMod$Intercept + (linearMod$Slope * mod_native))
   # 
-  # linearMod <- as_tibble(linearMod[, 1:3]) %>% dplyr::filter(Method == 'SMA')
-  # 
-  # 
-  # #final formulate type2
-  # all_compare <- all_compare %>% dplyr::mutate(Mod_Corrected = linearMod$Intercept + (linearMod$Slope * mod_native))
-  
+
   
   write_csv(all_compare, file.path(out_path, 'ranger.csv'))
   
@@ -224,10 +270,11 @@ scaling <- function(df, in_model, out_path, importance, category){
   
   # final
   
-  #get the residuals
-  resid <- as_tibble(linearMod$residuals) %>% dplyr::rename(Residual = value)
-  all_compare$Residual <- resid$Residual
-  
+   
+  #get the residuals, needs to change for type2
+  # resid <- as_tibble(linearMod$residuals) %>% dplyr::rename(Residual = value)
+  # all_compare$Residual <- resid$Residual
+
   #get the residuals for type 2 regression
   all_compare <- all_compare %>% dplyr::mutate(Residual = land_native - Mod_Corrected)
   
@@ -247,43 +294,48 @@ scaling <- function(df, in_model, out_path, importance, category){
 
 above_f <- scaling(above, '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/rfe_no_fwi/full_model_ranger.rds',
                  "/mnt/data1/boreal/spotter/combustion/final_files/scaling/aboveground/no_fwi/combined",
-                 '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/rfe_no_fwi/rfe_importance.csv', 
+                 '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/rfe_no_fwi/rfe_importance.csv',
                  'above')
 
 below_f <- scaling(below, '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/rfe_no_fwi/full_model_ranger.rds',
                  "/mnt/data1/boreal/spotter/combustion/final_files/scaling/belowground/no_fwi/combined",
-                 '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/rfe_no_fwi/rfe_importance.csv', 
+                 '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/rfe_no_fwi/rfe_importance.csv',
                  'below')
 
 
 above_f <- scaling(above, '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/rfe_no_all/full_model_ranger.rds',
                    "/mnt/data1/boreal/spotter/combustion/final_files/scaling/aboveground/no_all/combined",
-                   '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/rfe_no_all/rfe_importance.csv', 
+                   '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/rfe_no_all/rfe_importance.csv',
                    'above')
 
 below_f <- scaling(below, '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/rfe_no_all/full_model_ranger.rds',
                    "/mnt/data1/boreal/spotter/combustion/final_files/scaling/belowground/no_all/combined",
-                   '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/rfe_no_all/rfe_importance.csv', 
+                   '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/rfe_no_all/rfe_importance.csv',
                    'below')
 
-above_f <- scaling(above, '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/rfe_no_age/full_model_ranger.rds',
-                   "/mnt/data1/boreal/spotter/combustion/final_files/scaling/aboveground/no_age/combined",
-                   '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/rfe_no_age/rfe_importance.csv', 
-                   'above')
+above_f <- scaling(df = above,
+                   in_model = '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/rfe_no_age/full_model_ranger.rds',
+                   out_path = "/mnt/data1/boreal/spotter/combustion/final_files/scaling/aboveground/no_age/combined_type2",
+                   importance = '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/rfe_no_age/rfe_importance.csv',
+                   category = 'above')
 
-below_f <- scaling(below, '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/rfe_no_age/full_model_ranger.rds',
-                   "/mnt/data1/boreal/spotter/combustion/final_files/scaling/belowground/no_age/combined",
-                   '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/rfe_no_age/rfe_importance.csv', 
-                   'below')
+below_f <- scaling(df = below,
+                   in_model = '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/rfe_no_age/full_model_ranger.rds',
+                   out_path = "/mnt/data1/boreal/spotter/combustion/final_files/scaling/belowground/no_age/combined_type2",
+                   importance = '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/rfe_no_age/rfe_importance.csv',
+                   category = 'below')
 
 
-above_f <- scaling(above, '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/rfe/full_model_ranger.rds',
-                   "/mnt/data1/boreal/spotter/combustion/final_files/scaling/aboveground/all/combined",
-                   '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/rfe/rfe_importance.csv',
-                   'above')
+above_f <- scaling(df = above,
+                   in_model = '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/rfe/full_model_ranger.rds',
+                   out_path = "/mnt/data1/boreal/spotter/combustion/final_files/scaling/aboveground/all/combined_type2",
+                   importance = '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/rfe/rfe_importance.csv',
+                   category = 'above')
 
 below_f <- scaling(below, '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/rfe/full_model_ranger.rds',
-                   "/mnt/data1/boreal/spotter/combustion/final_files/scaling/belowground/all/combined",
+                   "/mnt/data1/boreal/spotter/combustion/final_files/scaling/belowground/all/combined_type2",
                    '/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/rfe/rfe_importance.csv',
                    'below')
 
+# scaling <- function(df, in_model, out_path, importance, category){
+  

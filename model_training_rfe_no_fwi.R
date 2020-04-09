@@ -21,7 +21,7 @@ df <- df[sample(1:nrow(df)), ]
 #get some columns to remove such as id, latitude etc.
 bad_cols <- c('id', 'project.name', 'burn_year', 'latitude', 'longitude',
               'BUI', 'DC', 'DMC', 'DSR', 'FFMC', 'FWI', 'ISI', 'Relative.humidity', 'Temperature',
-              'Wind.speed', 'VPD')
+              'Wind.speed', 'VPD', 'CNA_MAR')
   
 #remove abovground bad cols
 above <- df %>% dplyr::select(-(bad_cols), -below.ground.carbon.combusted) %>% drop_na()  

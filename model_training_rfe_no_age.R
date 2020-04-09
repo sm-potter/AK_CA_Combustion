@@ -8,8 +8,9 @@ library(viridis)
 
 
 #set a random seed
-# set.seed(1896) 
-set.seed(170) 
+# set.seed(179) # good for above
+set.seed(1900)
+# set.seed(170) 
 
 
 #read in the training data
@@ -19,8 +20,8 @@ df <- read_csv("/mnt/data1/boreal/spotter/combustion/final_files/raw/all_predict
 df <- df[sample(1:nrow(df)), ]
 
 #get some columns to remove such as id, latitude etc.
-bad_cols <- c('id', 'project.name', 'burn_year', 'latitude', 'longitude',
-             'stand.age')
+bad_cols <- c('id', 'project.name', 'burn_year', 'latitude', 'longitude', 'stand.age', 'CNA_MAR')
+
   
 #remove abovground bad cols
 above <- df %>% dplyr::select(-(bad_cols), -below.ground.carbon.combusted) %>% drop_na()  
@@ -100,10 +101,11 @@ model_compare <- function(df, out_path, category){
   normalized <- function(x) (x- min(x))/(max(x) - min(x))
   
   #normaize the predictor variables
-  # df[, 2:length(colnames(df))] <- lapply(df[, 2:length(colnames(df))], normalized)
+  df[, 2:length(colnames(df))] <- lapply(df[, 2:length(colnames(df))], normalized)
   
   #set up the rfe
-  set.seed(555)
+  #set.seed(555) #good for above
+  set.seed(532)
   control <- rfeControl(functions = rfFuncs,
                         method = "repeatedcv",
                         repeats = 3,
@@ -151,7 +153,9 @@ model_compare <- function(df, out_path, category){
   
   
   #set the fit control parameter for caret, here is 10 fold cv repeated 3 times
-  set.seed(100)
+  # set.seed(100)
+  set.seed(170)
+  
   fitControl <- trainControl(method = "repeatedcv",
                              number = 10,
                              repeats = 3,
@@ -412,8 +416,8 @@ model_compare <- function(df, out_path, category){
   return(for_output)
 }
 
-above_stand <- model_compare(above, "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/rfe_no_norm_no_age", 'above')
-below_stand <- model_compare(below, "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/rfe_no_norm_no_age", 'below')
+above_stand <- model_compare(above, "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/aboveground/stand_age/rfe_no_age", 'above')
+# below_stand <- model_compare(below, "/mnt/data1/boreal/spotter/combustion/final_files/model_comparisons/belowground/stand_age/rfe_no_age", 'below')
 # 
 
 

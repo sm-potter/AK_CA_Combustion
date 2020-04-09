@@ -14,12 +14,13 @@ set.seed(170)
 
 #read in the training data
 df <- read_csv("/mnt/data1/boreal/spotter/combustion/final_files/raw/all_predictors.csv")
+df <- df %>% mutate(PFI = ifelse(is.na(PFI), 0, PFI))
 
 #shuffle the dataframe
 df <- df[sample(1:nrow(df)), ]
 
 #get some columns to remove such as id, latitude etc.
-bad_cols <- c('id', 'project.name', 'burn_year', 'latitude', 'longitude')
+bad_cols <- c('id', 'project.name', 'burn_year', 'latitude', 'longitude', 'CNA_MAR')
   
 #remove abovground bad cols
 above <- df %>% dplyr::select(-(bad_cols), -below.ground.carbon.combusted) %>% drop_na()  
