@@ -19,17 +19,16 @@ var tavg = ee.ImageCollection("users/spotter/wcv2_tavg"),
     non = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_NonVeg"),
     ocon = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_OtherCon"),
     WS = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_WS"),
-    clay = ee.Image("users/spotter/Soil_Grids_Integrals/Clay_Pct_30_agg"),
-    coarse = ee.Image("users/spotter/Soil_Grids_Integrals/Coarse_Pct_30_agg"),
-    soc_content = ee.Image("users/spotter/Soil_Grids_Integrals/SOC_Stock_30_agg"),
+    bd = ee.Image("users/spotter/Soil_Grids_Integrals/BD_30_agg"),
+    clay = ee.Image("users/spotter/Soil_Grids_Integrals/Clay_30_agg"),
+    soc = ee.Image("users/spotter/Soil_Grids_Integrals/SOC_30_agg"),
     sand = ee.Image("users/spotter/Soil_Grids_Integrals/Sand_Pct_30_agg"),
-    silt = ee.Image("users/spotter/Soil_Grids_Integrals/Silt_Content_30_agg"),
-    soil_ph = ee.Image("users/spotter/Soil_Grids_Integrals/Soil_pH_H2O_30_agg");
+    silt = ee.Image("users/spotter/Soil_Grids_Integrals/Silt_30_agg"),
+    soil_ph = ee.Image("users/spotter/Soil_Grids_Integrals/pH_30_agg");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //------------------------------------------------This script will extract from all the above predictors the values for the 
 //------------------------------------------------the sample of landsat and modis paxels and export to csv
 
-//--------------------------------------------still need to add land cover, elevation, slope, aspect, TWI
 
 
 //first image in modis dummy - used for reprojection metadata
@@ -112,14 +111,12 @@ var distDir = 1;
 // define function to calculate a spectral index to segment with LT
 var get_NBR = function(img) {
     var index = img.normalizedDifference(['B4', 'B7'])                     
-                  .multiply(1000)                                        
                   .select([0], ['NBR'])                                    
                   .set('system:time_start', img.get('system:time_start')); 
     return index ;
 };
 var get_NDVI = function(img) {
     var index = img.normalizedDifference(['B4', 'B3'])                     
-                  .multiply(1000)                                        
                   .select([0], ['NDVI'])                                    
                   .set('system:time_start', img.get('system:time_start')); 
     return index ;
@@ -127,7 +124,6 @@ var get_NDVI = function(img) {
 
 var get_NDII = function(img) {
     var index = img.normalizedDifference(['B4', 'B5'])                     
-                  .multiply(1000)                                        
                   .select([0], ['NDII'])                                    
                   .set('system:time_start', img.get('system:time_start')); 
     return index ;
@@ -171,13 +167,7 @@ var tc_dict = ee.Dictionary.fromLists(burn_years2, tc_years);
 
 // var landsat_samples = landsat_samples.filter(ee.Filter.eq("ID2", "2004_4"));
 
-//rename
-// var bd = bd.select('b1').rename('BD_30');
-var clay = clay.select('b1').rename('Clay_30');
-var sand = sand.select('b1').rename('Sand_30');
-var silt = silt.select('b1').rename('Silt_30');
-var soil_ph = soil_ph.select('b1').rename('pH_30');
-var soc = soc_content.select('b1').rename('SOC_30');
+
 var pfi = pfi.select('b1').rename('PFI');
 var ruggedness = ruggedness.select('b1').rename('Ruggedness');
 var BS = BS.select('b1').rename('BS');
@@ -188,13 +178,13 @@ var non = non.select('b1').rename('NV');
 var ocon = ocon.select('b1').rename('OCON');
 var WS = WS.select('b1').rename('WS');
 
-var BS = BS.where(BS.eq(-32767), 0);
-var DB = DB.where(DB.eq(-32767), 0);
-var GR = GR.where(GR.eq(-32767), 0);
-var JP = JP.where(JP.eq(-32767), 0);
-var non = non.where(non.eq(-32767), 0);
-var ocon = ocon.where(ocon.eq(-32767), 0);
-var WS = WS.where(WS.eq(-32767), 0);
+var BS = BS.where(BS.lt(0), 0);
+var DB = DB.where(DB.lt(0), 0);
+var GR = GR.where(GR.lt(0), 0);
+var JP = JP.where(JP.lt(0), 0);
+var non = non.where(non.lt(0), 0);
+var ocon = ocon.where(ocon.lt(0), 0);
+var WS = WS.where(WS.lt(0), 0);
 
 var twi = twi.mean().select('b1').rename('TWI');
 
@@ -376,7 +366,7 @@ var feat_iteration = ee.FeatureCollection(burn_years.map(function(element){
                   addBands(twi).addBands(aspect).addBands(slope).addBands(dem);
   
   //get all the 250m bands
-  var all_250_bands = sand.addBands(silt).addBands(clay).
+  var all_250_bands = bd.addBands(sand).addBands(silt).addBands(clay).
                       addBands(soil_ph).addBands(soc);
                       
   //get all_500_bands

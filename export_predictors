@@ -22,10 +22,12 @@ var tavg = ee.ImageCollection("users/spotter/wcv2_tavg"),
     non = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_NonVeg"),
     ocon = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_OtherCon"),
     WS = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_WS"),
-    clay = ee.Image("users/spotter/Soil_Grids_Integrals/Clay_Pct_30_agg"),
-    coarse = ee.Image("users/spotter/Soil_Grids_Integrals/Coarse_Pct_30_agg"),
     sand = ee.Image("users/spotter/Soil_Grids_Integrals/Sand_Pct_30_agg"),
-    silt = ee.Image("users/spotter/Soil_Grids_Integrals/Silt_Content_30_agg"),
+    BD = ee.Image("users/spotter/Soil_Grids_Integrals/BD_30_agg"),
+    clay = ee.Image("users/spotter/Soil_Grids_Integrals/Clay_30_agg"),
+    silt = ee.Image("users/spotter/Soil_Grids_Integrals/Silt_30_agg"),
+    soil_ph = ee.Image("users/spotter/Soil_Grids_Integrals/pH_30_agg"),
+    soc = ee.Image("users/spotter/Soil_Grids_Integrals/SOC_30_agg"),
     geometry = 
     /* color: #d63000 */
     /* shown: false */
@@ -35,12 +37,10 @@ var tavg = ee.ImageCollection("users/spotter/wcv2_tavg"),
       }
     ] */
     ee.Geometry.Polygon(
-        [[[-173.74434671691867, 73.891903576046],
-          [-173.74434671691867, 41.095608047782264],
-          [-41.20528421691868, 41.095608047782264],
-          [-41.20528421691868, 73.891903576046]]], null, false),
-    soil_ph = ee.Image("users/spotter/Soil_Grids_Integrals/Soil_pH_H2O_30_agg"),
-    soc_stock = ee.Image("users/spotter/Soil_Grids_Integrals/SOC_Stock_30_agg");
+        [[[-168.48047685626733, 72.23697234614004],
+          [-168.48047685626733, 41.248367006711135],
+          [-50.70703935626734, 41.248367006711135],
+          [-50.70703935626734, 72.23697234614004]]], null, false);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //------------------------------------------------This script will extract from all the above predictors the values for the 
 //------------------------------------------------the sample of landsat and modis paxels and export to csv
@@ -169,13 +169,6 @@ var tc_years = [ee.Number(2000), ee.Number(2000), ee.Number(2000), ee.Number(200
 var tc_dict = ee.Dictionary.fromLists(burn_years2, tc_years);
 
 
-//rename
-// var bd = bd.select('b1').rename('BD_30');
-var clay = clay.select('b1').rename('Clay_30');
-var sand = sand.select('b1').rename('Sand_30');
-var silt = silt.select('b1').rename('Silt_30');
-var soil_ph = soil_ph.select('b1').rename('pH_30');
-var soc = soc_stock.select('b1').rename('SOC_30');
 var pfi = pfi.select('b1').rename('PFI');
 var ruggedness = ruggedness.select('b1').rename('Ruggedness');
 var BS = BS.select('b1').rename('BS');
@@ -187,14 +180,28 @@ var ocon = ocon.select('b1').rename('OCON');
 var WS = WS.select('b1').rename('WS');
 var twi = twi.mean().select('b1').rename('TWI');
 
-var BS = BS.where(BS.eq(-32767), 0);
-var DB = DB.where(DB.eq(-32767), 0);
-var GR = GR.where(GR.eq(-32767), 0);
-var JP = JP.where(JP.eq(-32767), 0);
-var non = non.where(non.eq(-32767), 0);
-var ocon = ocon.where(ocon.eq(-32767), 0);
-var WS = WS.where(WS.eq(-32767), 0);
+// var BS = BS.where(BS.lt(0), 0);
+// var DB = DB.where(DB.lt(0), 0);
+// var GR = GR.where(GR.lt(0), 0);
+// var JP = JP.where(JP.lt(0), 0);
+// var non = non.where(non.lt(0), 0);
+// var ocon = ocon.where(ocon.lt(0), 0);
+// var WS = WS.where(WS.lt(0), 0);
 
+var mask = BS.gt(0);
+var BS = BS.updateMask(mask);
+var mask = DB.gt(0);
+var DB = DB.updateMask(mask);
+var mask = GR.gt(0);
+var GR = GR.updateMask(mask);
+var mask = BS.gt(0);
+var JP = JP.updateMask(mask);
+var mask = non.gt(0);
+var non = non.updateMask(mask);
+var mask = BS.gt(0);
+var ocon = ocon.updateMask(mask);
+var mask = WS.gt(0);
+var WS = WS.updateMask(mask);
 
 //resample all variables
 // var bd = resample(bd.clip(can_al), 250, 500, 'SR-ORG:6974');
@@ -331,7 +338,7 @@ var feat_iteration = ee.FeatureCollection(burn_years.map(function(element){
   var all_30_bands_time = resample(all_30_bands_time, 250, 500, 'SR-ORG:6974');
 
   //get all the 250m bands
-  var all_250_bands = sand.addBands(silt).addBands(clay).
+  var all_250_bands = BD.addBands(sand).addBands(silt).addBands(clay).
                       addBands(soil_ph).addBands(soc);
   
   var all_250_bands = resample(all_250_bands, 250, 500, 'SR-ORG:6974');
@@ -378,7 +385,7 @@ var feat_iteration = ee.FeatureCollection(burn_years.map(function(element){
   image: all_500_bands.clip(geometry),
   description: 'all_500_bands',
   bucket: 'smp-scratch',
-  scale: 500,
+  scale: 463.312713623047,
   maxPixels: 1e13,
   region : geometry
   

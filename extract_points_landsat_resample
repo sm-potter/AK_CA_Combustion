@@ -104,14 +104,12 @@ var distDir = 1;
 // define function to calculate a spectral index to segment with LT
 var get_NBR = function(img) {
     var index = img.normalizedDifference(['B4', 'B7'])                     
-                  .multiply(1000)                                        
                   .select([0], ['NBR'])                                    
                   .set('system:time_start', img.get('system:time_start')); 
     return index ;
 };
 var get_NDVI = function(img) {
     var index = img.normalizedDifference(['B4', 'B3'])                     
-                  .multiply(1000)                                        
                   .select([0], ['NDVI'])                                    
                   .set('system:time_start', img.get('system:time_start')); 
     return index ;
@@ -119,7 +117,6 @@ var get_NDVI = function(img) {
 
 var get_NDII = function(img) {
     var index = img.normalizedDifference(['B4', 'B5'])                     
-                  .multiply(1000)                                        
                   .select([0], ['NDII'])                                    
                   .set('system:time_start', img.get('system:time_start')); 
     return index ;

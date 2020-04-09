@@ -2,8 +2,23 @@
 var pts = ee.FeatureCollection("users/spotter/ak_ca_combustion/raw/all_training_pts"),
     dem = ee.ImageCollection("users/spotter/burns_dem"),
     twi = ee.ImageCollection("users/spotter/twi_30m"),
-    tree_cover = ee.ImageCollection("GLCF/GLS_TCC");
+    tree_cover = ee.ImageCollection("GLCF/GLS_TCC"),
+    bd = ee.Image("users/spotter/Soil_Grids_Integrals/BD_30_agg"),
+    clay = ee.Image("users/spotter/Soil_Grids_Integrals/Clay_30_agg"),
+    soc = ee.Image("users/spotter/Soil_Grids_Integrals/SOC_30_agg"),
+    sand = ee.Image("users/spotter/Soil_Grids_Integrals/Sand_Pct_30_agg"),
+    silt = ee.Image("users/spotter/Soil_Grids_Integrals/Silt_30_agg"),
+    soil_ph = ee.Image("users/spotter/Soil_Grids_Integrals/pH_30_agg"),
+    BS = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_BS"),
+    DB = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_DB"),
+    GR = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_GrassShrub"),
+    JP = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_JP"),
+    non = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_NonVeg"),
+    ocon = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_OtherCon"),
+    WS = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_WS");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
+var sand = sand.select('Clay_30').rename('Sand_30');
+
 //get mean of the dem
 var dem = dem.mean().select('b1').rename('elevation');
 
@@ -41,7 +56,7 @@ var simpleJoin = ee.Join.saveFirst( {matchKey:'key'});
 var join_all = function(left, right, filter) {
   var join = simpleJoin.apply(left, right, filter);
  
- //flatten the key feature so its one table
+//flatten the key feature so its one table
   var join = join.map(function(f) {
   var f1 = ee.Feature(f);
   var f2 = ee.Feature(f.get('key')).toDictionary();
@@ -106,10 +121,10 @@ var burn_years = [1987, 1990, 1991, 1993,
                   2015];
                   
 var burn_years2 = ['1987', '1990', '1991', '1993', 
-                   '1994', '1996', '1998', '1999', 
-                   '2002', '2003' ,'2004', '2005', 
-                   '2010', '2011', '2013', '2014', 
-                   '2015'];
+                  '1994', '1996', '1998', '1999', 
+                  '2002', '2003' ,'2004', '2005', 
+                  '2010', '2011', '2013', '2014', 
+                  '2015'];
 
 //dict for tc years
 var tc_years = [ee.Number(2000), ee.Number(2000), ee.Number(2000), ee.Number(2000), 
@@ -119,6 +134,30 @@ var tc_years = [ee.Number(2000), ee.Number(2000), ee.Number(2000), ee.Number(200
                 ee.Number(2010)];
 
 var tc_dict = ee.Dictionary.fromLists(burn_years2, tc_years);
+
+
+var BS = BS.select('b1').rename('BS');
+var DB = DB.select('b1').rename('DEC');
+var GR = GR.select('b1').rename('GRSH');
+var JP = JP.select('b1').rename('JP');
+var non = non.select('b1').rename('NV');
+var ocon = ocon.select('b1').rename('OCON');
+var WS = WS.select('b1').rename('WS');
+
+var mask = BS.gt(0);
+var BS = BS.updateMask(mask);
+var mask = DB.gt(0);
+var DB = DB.updateMask(mask);
+var mask = GR.gt(0);
+var GR = GR.updateMask(mask);
+var mask = BS.gt(0);
+var JP = JP.updateMask(mask);
+var mask = non.gt(0);
+var non = non.updateMask(mask);
+var mask = BS.gt(0);
+var ocon = ocon.updateMask(mask);
+var mask = WS.gt(0);
+var WS = WS.updateMask(mask);
 
 
 var feat_iteration = ee.FeatureCollection(burn_years.map(function(element){
@@ -244,7 +283,7 @@ var feat_iteration = ee.FeatureCollection(burn_years.map(function(element){
   
   var dnbr = preNBR.select('preNBR').subtract(postNBR.select('postNBR'));
   var dnbr = dnbr.select('preNBR').rename('dNBR');
- 
+
   var burnIndices = preNBR.addBands(postNBR).addBands(dnbr);
   
   // calculate RBR  
@@ -272,8 +311,14 @@ var feat_iteration = ee.FeatureCollection(burn_years.map(function(element){
   var all_bands = rdnbr.addBands(dem).addBands(aspect).addBands(slope)
                       .addBands(twi).addBands(ndii).addBands(ndvi)
                       .addBands(tcap).addBands(tree_cover2);
-                       
+                      
+                      //join the rest of the bands together
+ var all_250_bands = bd.addBands(sand).addBands(silt).addBands(clay).
+                      addBands(soil_ph).addBands(soc);
 
+//get all_500_bands
+  var all_500_bands = BS.addBands(DB).addBands(GR).addBands(JP).addBands(non).
+                      addBands(ocon).addBands(WS)
   //extract all the bands
   var result = all_bands.sampleRegions({collection: sub_samples,
                                 scale: 30,
@@ -281,7 +326,22 @@ var feat_iteration = ee.FeatureCollection(burn_years.map(function(element){
                                 geometries: false
   });
   
-  return(result);
+    //extract all the bands
+  var result2 = all_250_bands.sampleRegions({collection: sub_samples,
+                                scale: 250,
+                                tileScale: 16,
+                                geometries: false
+  });
+  
+  var result3 = all_500_bands.sampleRegions({collection: sub_samples,
+                                scale: 460,
+                                tileScale: 16,
+                                geometries: false
+  });
+  var mod_result = join_all(result, result2, filter);
+  var mod_result = join_all(mod_result, result3, filter);
+
+  return(mod_result);
 
 }));
 

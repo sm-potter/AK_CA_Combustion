@@ -20,12 +20,6 @@ var tavg = ee.ImageCollection("users/spotter/wcv2_tavg"),
     non = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_NonVeg"),
     ocon = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_OtherCon"),
     WS = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_WS"),
-    clay = ee.Image("users/spotter/Soil_Grids_Integrals/Clay_Pct_30_agg"),
-    coarse = ee.Image("users/spotter/Soil_Grids_Integrals/Coarse_Pct_30_agg"),
-    soc_content = ee.Image("users/spotter/Soil_Grids_Integrals/SOC_Stock_30_agg"),
-    sand = ee.Image("users/spotter/Soil_Grids_Integrals/Sand_Pct_30_agg"),
-    silt = ee.Image("users/spotter/Soil_Grids_Integrals/Silt_Content_30_agg"),
-    soil_ph = ee.Image("users/spotter/Soil_Grids_Integrals/Soil_pH_H2O_30_agg"),
     s_2001 = ee.Image("users/spotter/combustion_scaling/stand_ages/2001"),
     s_2002 = ee.Image("users/spotter/combustion_scaling/stand_ages/2002"),
     s_2003 = ee.Image("users/spotter/combustion_scaling/stand_ages/2003"),
@@ -42,7 +36,13 @@ var tavg = ee.ImageCollection("users/spotter/wcv2_tavg"),
     s_2014 = ee.Image("users/spotter/combustion_scaling/stand_ages/2014"),
     s_2015 = ee.Image("users/spotter/combustion_scaling/stand_ages/2015"),
     s_2016 = ee.Image("users/spotter/combustion_scaling/stand_ages/2016"),
-    s_2017 = ee.Image("users/spotter/combustion_scaling/stand_ages/2017");
+    s_2017 = ee.Image("users/spotter/combustion_scaling/stand_ages/2017"),
+    bd = ee.Image("users/spotter/Soil_Grids_Integrals/BD_30_agg"),
+    clay = ee.Image("users/spotter/Soil_Grids_Integrals/Clay_30_agg"),
+    soc = ee.Image("users/spotter/Soil_Grids_Integrals/SOC_30_agg"),
+    sand = ee.Image("users/spotter/Soil_Grids_Integrals/Sand_Pct_30_agg"),
+    silt = ee.Image("users/spotter/Soil_Grids_Integrals/Silt_30_agg"),
+    soil_ph = ee.Image("users/spotter/Soil_Grids_Integrals/pH_30_agg");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //------------------------------------------------This script will extract from all the above predictors the values for the 
 //------------------------------------------------the sample of landsat and modis paxels and export to csv
@@ -150,14 +150,12 @@ var distDir = 1;
 // define function to calculate a spectral index to segment with LT
 var get_NBR = function(img) {
     var index = img.normalizedDifference(['B4', 'B7'])                     
-                  .multiply(1000)                                        
                   .select([0], ['NBR'])                                    
                   .set('system:time_start', img.get('system:time_start')); 
     return index ;
 };
 var get_NDVI = function(img) {
     var index = img.normalizedDifference(['B4', 'B3'])                     
-                  .multiply(1000)                                        
                   .select([0], ['NDVI'])                                    
                   .set('system:time_start', img.get('system:time_start')); 
     return index ;
@@ -165,7 +163,6 @@ var get_NDVI = function(img) {
 
 var get_NDII = function(img) {
     var index = img.normalizedDifference(['B4', 'B5'])                     
-                  .multiply(1000)                                        
                   .select([0], ['NDII'])                                    
                   .set('system:time_start', img.get('system:time_start')); 
     return index ;
@@ -209,13 +206,7 @@ var tc_dict = ee.Dictionary.fromLists(burn_years2, tc_years);
 
 // var landsat_samples = landsat_samples.filter(ee.Filter.eq("ID2", "2004_4"));
 
-//rename
-// var bd = bd.select('b1').rename('BD_30');
-var clay = clay.select('b1').rename('Clay_30');
-var sand = sand.select('b1').rename('Sand_30');
-var silt = silt.select('b1').rename('Silt_30');
-var soil_ph = soil_ph.select('b1').rename('pH_30');
-var soc = soc_content.select('b1').rename('SOC_30');
+
 var pfi = pfi.select('b1').rename('PFI');
 var ruggedness = ruggedness.select('b1').rename('Ruggedness');
 var BS = BS.select('b1').rename('BS');
@@ -226,13 +217,29 @@ var non = non.select('b1').rename('NV');
 var ocon = ocon.select('b1').rename('OCON');
 var WS = WS.select('b1').rename('WS');
 
-var BS = BS.where(BS.eq(-32767), 0);
-var DB = DB.where(DB.eq(-32767), 0);
-var GR = GR.where(GR.eq(-32767), 0);
-var JP = JP.where(JP.eq(-32767), 0);
-var non = non.where(non.eq(-32767), 0);
-var ocon = ocon.where(ocon.eq(-32767), 0);
-var WS = WS.where(WS.eq(-32767), 0);
+// var BS = BS.where(BS.lt(0), 0);
+// var DB = DB.where(DB.lt(0), 0);
+// var GR = GR.where(GR.lt(0), 0);
+// var JP = JP.where(JP.lt(0), 0);
+// var non = non.where(non.lt(0), 0);
+// var ocon = ocon.where(ocon.lt(0), 0);
+// var WS = WS.where(WS.lt(0), 0);
+
+var mask = BS.gt(0);
+var BS = BS.updateMask(mask);
+var mask = DB.gt(0);
+var DB = DB.updateMask(mask);
+var mask = GR.gt(0);
+var GR = GR.updateMask(mask);
+var mask = BS.gt(0);
+var JP = JP.updateMask(mask);
+var mask = non.gt(0);
+var non = non.updateMask(mask);
+var mask = BS.gt(0);
+var ocon = ocon.updateMask(mask);
+var mask = WS.gt(0);
+var WS = WS.updateMask(mask);
+
 
 var twi = twi.mean().select('b1').rename('TWI');
 
@@ -429,7 +436,7 @@ var feat_iteration = ee.FeatureCollection(burn_years.map(function(element){
                   addBands(twi).addBands(aspect).addBands(slope).addBands(dem);
   
   //get all the 250m bands
-  var all_250_bands = sand.addBands(silt).addBands(clay).
+  var all_250_bands = bd.addBands(sand).addBands(silt).addBands(clay).
                       addBands(soil_ph).addBands(soc);
                       
   //get all_500_bands
@@ -441,7 +448,7 @@ var feat_iteration = ee.FeatureCollection(burn_years.map(function(element){
                  
   // var mod_30_result = land_extract(modis_samples2, all_30_bands, 30, 'EPSG:4326');
   // var mod_250_result = land_extract(landsat_samples2, all_250_bands, 250, 'EPSG:4326');
-  var mod_500_result = land_extract(landsat_samples2, all_500_bands, 500, 'SR-ORG:6974');
+  var mod_500_result = land_extract(landsat_samples2, all_500_bands, 463.312713623047, 'SR-ORG:6974');
   var mod_1000_result = land_extract(landsat_samples2, all_1000_bands, 1000, 'EPSG:4326');
   
 

@@ -1,0 +1,293 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var mod_te_sr = ee.ImageCollection("MODIS/006/MOD09A1"),
+    landsat_samples = ee.FeatureCollection("users/spotter/combustion_scaling/original/landsat/all_years"),
+    can_al = ee.FeatureCollection("users/spotter/comb_dNBR/can_alaska"),
+    modis_samples = ee.FeatureCollection("users/spotter/combustion_scaling/pure_fire_mixed_veg/modis/all_years_pts"),
+    modis_tree_cover = ee.ImageCollection("MODIS/006/MOD44B"),
+    geometry = 
+    /* color: #98ff00 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-169.10754044226806, 73.12080650163041],
+          [-169.10754044226806, 41.49790086991659],
+          [-50.279415442268075, 41.49790086991659],
+          [-50.279415442268075, 73.12080650163041]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var modis_tree_cover = modis_tree_cover.select('Percent_Tree_Cover');
+
+//get good quality modis
+  
+// Clean the image collection for clouds, cloud shadow and various flags
+// Create helper function to extract the QA bits
+function getQABits(img, start, end, newName) {
+    // Compute the bits we need to extract.
+    var pattern = 0;
+    for (var i = start; i <= end; i++) {
+        pattern += Math.pow(2, i);
+    }
+    // Return a single band image of the extracted QA bits, giving the band a new name
+    return img.select([0],[newName]).bitwiseAnd(pattern).rightShift(start);
+}
+
+// Final function to mask out clouds and flags
+var noClouds = function(img){
+    // Select the QA band
+    var cloudImg = img.select('StateQA');
+    // Get cloud qa bit masks
+    // Bits 0-1: Cloud state (clear = 0)
+    var cloudState = getQABits(cloudImg, 0, 1, 'cloud_state');
+    // Bit 2: Cloud shadow (no shadow = 0)
+    var shadowBitMask = Math.pow(2, 2);
+    // Get the internal_cloud_algorithm_flag bit
+    // Bits 8-9: Cirrus detected (none = 0)
+    // Bit 10: Internal cloud algorithm flag (no cloud = 0)
+    // Bit 11: Internal fire algorithm flag (no fire = 0)
+    // Bit 12: MOD35 snow/ice flag (no = 0)
+    // Bit 13: Pixel is adjacent to cloud (no = 0)
+    var internalQuality = getQABits(cloudImg, 8, 13, 'internal_quality_flag');
+    //Find the cloud cover
+    var NoClouds = cloudImg.bitwiseAnd(shadowBitMask).eq(0)
+                   .and(cloudState.eq(0)).and(internalQuality.eq(0));
+    // Return an image masking outcoudy and flagged areas.
+    return img.updateMask(NoClouds);
+};
+
+// Clean clouds from image
+// var mod_sr = mod_te_sr.map(noClouds);
+var mod_sr = mod_te_sr
+
+//--------------------------------------------still need to add land cover, elevation, slope, aspect, TWI
+
+//function to resample the resolution when necessary
+var resample = function(input_image, original_scale, output_scale, crs){
+  // first reproject PTC to MODIS but keep scale at 30m to ensure
+  // that reduceRegions will not run into issues near the poles
+  return input_image.reproject({
+    crs: crs,
+    scale: original_scale
+  })
+  // then downsample by averaging 30m pixels instead of using nearest neighbor
+  .reduceResolution({
+    reducer: ee.Reducer.mean(),
+    bestEffort: false,
+    maxPixels: 10e3
+  })
+  .reproject({
+    crs: crs,
+    scale: output_scale
+  });
+};
+
+//function to extract landsat data, input is sample points, ind_var is what to extract, proj is what projection to use
+var mod_extract = function(input, ind_var, scale, crs) {
+  // var sub = ind_var.resample('bilinear').reproject(L8.first().projection().atScale(L8.first().projection().nominalScale()));
+  var sampled = ind_var.sampleRegions({collection: input,
+                                scale: scale,
+                                // projection: 'EPSG:4326',
+                                projection: crs,
+                                tileScale: 16,
+                                geometries: false
+  });
+
+  return sampled;                                                                       
+};
+
+// Use an equals filter xto define how the collections match.
+var mod_filter = ee.Filter.equals({
+  leftField: 'ID2',
+  rightField: 'ID2'
+});
+
+// Create the join.
+var simpleJoin = ee.Join.saveFirst( {matchKey:'key'});
+
+//function to join the tables, left is left_table, right is right_table, filter is filter of choice
+var join_all = function(left, right, filter) {
+  var join = simpleJoin.apply(left, right, filter);
+ 
+ //flatten the key feature so its one table
+  var join = join.map(function(f) {
+  var f1 = ee.Feature(f);
+  var f2 = ee.Feature(f.get('key')).toDictionary();
+  return ee.Feature(f1).set(f2).set('key', null);   
+});
+
+  return join;                                                                       
+};
+
+// color pallettes
+var palettes = require('users/gena/packages:palettes');
+var style = require('users/gena/packages:style');
+var utils = require('users/gena/packages:utils');
+
+// define function to get NDII
+var get_NDII = function(img) {
+    var index = img.normalizedDifference(['sur_refl_b02', 'sur_refl_b06'])                     
+                   .select([0], ['NDII'])                                    
+                   .set('system:time_start', img.get('system:time_start')); 
+    return index ;
+};
+
+// define function to get NBR
+var get_NBR = function(img) {
+    var index = img.normalizedDifference(['sur_refl_b02', 'sur_refl_b07'])                     
+                   .select([0], ['NBR'])                                    
+                   .set('system:time_start', img.get('system:time_start')); 
+    return index ;
+};
+
+// define function to get NDVI
+var get_NDVI = function(img) {
+    var index = img.normalizedDifference(['sur_refl_b02', 'sur_refl_b01']) //2 is NIR and 1 is Red                 
+                   .select([0], ['NDVI'])                                    
+                   .set('system:time_start', img.get('system:time_start')); 
+    return index ;
+};
+
+
+
+//tasseled cap coefficients
+var coefficients = ee.Array([
+  [0.3956, 0.4718, 0.3354,  0.3834,  0.3946,  0.3434,  0.2964],
+  [-0.3399, 0.5952, -0.2129, -0.2222,  0.4617,  -0.1037,  -0.4600],
+  [0.10839, 0.0912, 0.5065,  0.4040,  -0.2410,  -0.4658,  -0.5306],
+  [0.4527, 0.4480, -0.3869, -0.1277,  -0.3164,  -0.4993,  0.2829],
+  [0.6478, -0.2448, -0.3705,  0.0068,  0.1385,  0.2564,  -0.5461],
+  [-0.2332, 0.3348, -0.2764, 0.3516, -0.5986, 0.5032, -0.1515],
+  [-0.1930, -0.2052, -0.4725, 0.7049, 0.3107, -0.2935, 0.1334]
+]);
+
+var mod_sr = mod_sr.select(['sur_refl_b01', 'sur_refl_b02', 'sur_refl_b03',
+                            'sur_refl_b04', 'sur_refl_b05', 'sur_refl_b06',
+                            'sur_refl_b07']);
+                            
+//function to get tasseled cap
+var get_tc = function(image){
+  return image.addBands(ee.Image(coefficients).matrixMultiply(image.toArray().toArray(1)).arrayProject([0])
+  .arrayFlatten(
+    [['brightness', 'greenness', 'wetness', 'fourth', 'fifth', 'sixth', 'seventh']]));
+};
+
+
+
+
+var burn_years = [2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017];
+var burn_years2 = ['2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', 
+                    '2013', '2014', '2015', '2016', '2017'];
+
+//dict for tc years
+var tc_years = [ee.Number(2000), ee.Number(2000), ee.Number(2000), ee.Number(2000),
+                ee.Number(2005), ee.Number(2005), ee.Number(2005), ee.Number(2005), ee.Number(2005),
+                ee.Number(2010), ee.Number(2010), ee.Number(2010), ee.Number(2010), ee.Number(2010), ee.Number(2010),
+                ee.Number(2010), ee.Number(2010)];
+
+var tc_dict = ee.Dictionary.fromLists(burn_years2, tc_years);
+
+var feat_iteration = ee.FeatureCollection(burn_years.map(function(element){
+  
+  //get tc_year from dictionary
+  var tc_year = tc_dict.get(String(element));
+
+  //start date
+  var start = element - 1;
+  var end = element + 1;
+  
+  // define years and dates to include in landsat image collection
+  var startYear  = String(start);    // what year do you want to start the time series 
+  var endYear    = String(end);    // what year do you want to end the time series
+  var startDay   = '-01-01'; // what is the beginning of date filter | month-day
+  var endDay     = '-12-30'; // what is the end of date filter | month-day
+  
+  var sr = mod_sr.filterDate(startYear + startDay, endYear + endDay);
+
+  //NBR 
+  var nbr = sr.map(get_NBR)                                            
+          .map(function(img) {return img          
+          .set('system:time_start', img.get('system:time_start'))}); 
+           
+  //NDII 
+  var ndii = sr.map(get_NDII)                                            
+          .map(function(img) {return img          
+          .set('system:time_start', img.get('system:time_start'))}); 
+  
+    //NDVI 
+  var ndvi = sr.map(get_NDVI)                                            
+          .map(function(img) {return img         
+          .set('system:time_start', img.get('system:time_start'))}); 
+  
+  var ndii = ndii.filterDate(String(end) + '-05-16', String(end) + '-06-15').mean().toFloat();
+  var ndvi = ndvi.filterDate(String(end) + '-05-16', String(end) + '-06-15').mean().toFloat();
+
+  //get indices of interest
+  var preNBR = nbr.filterDate(String(start) + '-06-01', String(start) + '-08-31').select('NBR').mean().select('NBR').rename('preNBR').toFloat();
+  var postNBR = nbr.filterDate(String(end) + '-06-01', String(end) + '-08-31').select('NBR').mean().select('NBR').rename('postNBR').toFloat();
+  
+  var dnbr = preNBR.select('preNBR').subtract(postNBR.select('postNBR'));
+  var dnbr = dnbr.select('preNBR').rename('dNBR');
+ 
+  var burnIndices = preNBR.addBands(postNBR).addBands(dnbr);
+  
+  // calculate RBR  
+  var rbr = burnIndices.expression(
+            "b('dNBR') / (b('preNBR') + 1.001)")
+            .rename('rbr').toFloat();
+  
+  var burnIndices = burnIndices.addBands(rbr);
+  
+// calculate RdNBR
+  var preNBR2 = burnIndices.expression(
+    "(b('preNBR') < 0.001) ? 0.001" + 
+      ": b('preNBR')")
+      .sqrt().rename('preNBR2');
+  
+  var burnIndices = burnIndices.addBands(preNBR2);
+
+  var rdnbr = burnIndices.expression(
+    "(b('dNBR') / sqrt(b('preNBR2')))")
+    .rename('rdnbr').toFloat().addBands(burnIndices);
+  
+  var rdnbr = rdnbr.select(['dNBR', 'rbr', 'rdnbr']);
+  
+  //------------------------resample tree_cover to landsat and modis than extract
+  var date1 = ee.Date.fromYMD(tc_year, ee.Number(1), ee.Number(1));
+  var date2 = ee.Date.fromYMD(tc_year, ee.Number(12), ee.Number(31));
+  
+  var sdate1 = ee.Date.fromYMD(ee.Number(element), ee.Number(1), ee.Number(1));
+  var sdate2 = ee.Date.fromYMD(ee.Number(element), ee.Number(12), ee.Number(31));
+  
+  var tree_cover2 = modis_tree_cover.filter(ee.Filter.date(date1, date2)).mean().toFloat()
+
+  
+  //resample tree cover to 500
+  var tree_cover2= resample(tree_cover2.clip(can_al), 250, 500, 'SR-ORG:6974');
+  
+ 
+  //tasseled cap
+  var tcap = sr.map(get_tc).select(['brightness', 'greenness', 'wetness']);
+  var tcap = tcap.filterDate(String(end) + '-05-16', String(end) + '-06-15').mean().toFloat();
+  // Map.addLayer(tcap.select('brightness'))
+  // Map.addLayer(rdnbr.select('dNBR'))
+
+  //get all_500_bands
+  var all_500_bands = tree_cover2.addBands(rdnbr).addBands(ndvi).addBands(ndii).addBands(tcap);
+
+  //bands go dNBR, rbr, rdnbr, Percent_Tree_Cover, brightness, greenness, wetness
+  Export.image.toCloudStorage({
+  image: all_500_bands.clip(geometry),
+  description: 'all_modis_vi_' + String(element),
+  bucket: 'smp-scratch',
+  scale: 500,
+  maxPixels: 1e13,
+  region : geometry
+  }); 
+  return(ndii);
+
+}));
+
+
+

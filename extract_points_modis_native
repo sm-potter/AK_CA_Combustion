@@ -4,9 +4,6 @@ var tavg = ee.ImageCollection("users/spotter/wcv2_tavg"),
     tmin = ee.ImageCollection("users/spotter/wcv2_tmin"),
     bio = ee.ImageCollection("users/spotter/wcv2_bio"),
     tree_cover = ee.ImageCollection("GLCF/GLS_TCC"),
-    mod_aq_vi = ee.ImageCollection("MODIS/006/MYD13A1"),
-    mod_te_vi = ee.ImageCollection("MODIS/006/MOD13A1"),
-    mod_aq_sr = ee.ImageCollection("MODIS/006/MYD09A1"),
     mod_te_sr = ee.ImageCollection("MODIS/006/MOD09A1"),
     dem = ee.ImageCollection("users/spotter/burns_dem"),
     pfi = ee.Image("users/spotter/gruber_pfi"),
@@ -21,12 +18,7 @@ var tavg = ee.ImageCollection("users/spotter/wcv2_tavg"),
     JP = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_JP"),
     non = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_NonVeg"),
     WS = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_WS"),
-    clay = ee.Image("users/spotter/Soil_Grids_Integrals/Clay_Pct_30_agg"),
-    coarse = ee.Image("users/spotter/Soil_Grids_Integrals/Coarse_Pct_30_agg"),
-    sand = ee.Image("users/spotter/Soil_Grids_Integrals/Sand_Pct_30_agg"),
-    silt = ee.Image("users/spotter/Soil_Grids_Integrals/Silt_Content_30_agg"),
     ocon = ee.Image("users/spotter/brendan_veg/ABoVE_VegMap_msin_500m_V1_OtherCon"),
-    soc_content = ee.Image("users/spotter/Soil_Grids_Integrals/SOC_Stock_30_agg"),
     s_2001 = ee.Image("users/spotter/combustion_scaling/stand_ages/2001"),
     s_2002 = ee.Image("users/spotter/combustion_scaling/stand_ages/2002"),
     s_2003 = ee.Image("users/spotter/combustion_scaling/stand_ages/2003"),
@@ -43,11 +35,18 @@ var tavg = ee.ImageCollection("users/spotter/wcv2_tavg"),
     s_2014 = ee.Image("users/spotter/combustion_scaling/stand_ages/2014"),
     s_2016 = ee.Image("users/spotter/combustion_scaling/stand_ages/2016"),
     s_2017 = ee.Image("users/spotter/combustion_scaling/stand_ages/2017"),
-    soil_ph = ee.Image("users/spotter/Soil_Grids_Integrals/Soil_pH_H2O_30_agg"),
-    s_2015 = ee.Image("users/spotter/combustion_scaling/stand_ages/2015");
+    s_2015 = ee.Image("users/spotter/combustion_scaling/stand_ages/2015"),
+    bd = ee.Image("users/spotter/Soil_Grids_Integrals/BD_30_agg"),
+    clay = ee.Image("users/spotter/Soil_Grids_Integrals/Clay_30_agg"),
+    soc = ee.Image("users/spotter/Soil_Grids_Integrals/SOC_30_agg"),
+    sand = ee.Image("users/spotter/Soil_Grids_Integrals/Sand_Pct_30_agg"),
+    silt = ee.Image("users/spotter/Soil_Grids_Integrals/Silt_30_agg"),
+    soil_ph = ee.Image("users/spotter/Soil_Grids_Integrals/pH_30_agg");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 //------------------------------------------------This script will extract from all the above predictors the values for the 
 //------------------------------------------------the sample of landsat and modis paxels and export to csv
+
+var mod_sr = mod_te_sr;
 
 
 //add time stamps for stand ages
@@ -142,16 +141,23 @@ var utils = require('users/gena/packages:utils');
 
 var get_NDII = function(img) {
     var index = img.normalizedDifference(['sur_refl_b02', 'sur_refl_b06'])                     
-                   .multiply(1000)                                        
                    .select([0], ['NDII'])                                    
                    .set('system:time_start', img.get('system:time_start')); 
     return index ;
 };
 
+// define function to get NDVI
+var get_NDVI = function(img) {
+    var index = img.normalizedDifference(['sur_refl_b02', 'sur_refl_b01']) //2 is NIR and 1 is Red                 
+                   .select([0], ['NDVI'])                                    
+                   .set('system:time_start', img.get('system:time_start')); 
+    return index ;
+};
+
+
 // define function to calculate a spectral index to segment with LT
 var get_NBR = function(img) {
     var index = img.normalizedDifference(['sur_refl_b02', 'sur_refl_b07'])                     
-                   .multiply(1000)                                        
                    .select([0], ['NBR'])                                    
                    .set('system:time_start', img.get('system:time_start')); 
     return index ;
@@ -178,9 +184,6 @@ var get_tc = function(image){
 };
 
 
-//combine vi aqua and terra
-var mod_vi = mod_aq_vi.merge(mod_te_vi);
-var mod_sr = mod_aq_sr.merge(mod_te_sr);
 
 //qa 1 is marginal and qa 0 is high confidence
 var quality_mask = function(image){
@@ -188,7 +191,6 @@ var quality_mask = function(image){
 
 };
 
-var mod_vi = mod_vi.map(quality_mask).select('NDVI');
 
 //------------------------get the elevation, slope and aspect information
 
@@ -235,12 +237,7 @@ var tc_dict = ee.Dictionary.fromLists(burn_years2, tc_years);
 
 
 //rename
-// var bd = bd.select('b1').rename('BD_30');
-var clay = clay.select('b1').rename('Clay_30');
-var sand = sand.select('b1').rename('Sand_30');
-var silt = silt.select('b1').rename('Silt_30');
-var soil_ph = soil_ph.select('b1').rename('pH_30');
-var soc = soc_content.select('b1').rename('SOC_30');
+
 var pfi = pfi.select('b1').rename('PFI');
 var ruggedness = ruggedness.select('b1').rename('Ruggedness');
 var BS = BS.select('b1').rename('BS');
@@ -252,19 +249,32 @@ var ocon = ocon.select('b1').rename('OCON');
 var WS = WS.select('b1').rename('WS');
 var twi = twi.mean().select('b1').rename('TWI');
 
-var BS = BS.where(BS.eq(-32767), 0);
-var DB = DB.where(DB.eq(-32767), 0);
-var GR = GR.where(GR.eq(-32767), 0);
-var JP = JP.where(JP.eq(-32767), 0);
-var non = non.where(non.eq(-32767), 0);
-var ocon = ocon.where(ocon.eq(-32767), 0);
-var WS = WS.where(WS.eq(-32767), 0);
+// var BS = BS.where(BS.lt(0), 0);
+// var DB = DB.where(DB.lt(0), 0);
+// var GR = GR.where(GR.lt(0), 0);
+// var JP = JP.where(JP.lt(0), 0);
+// var non = non.where(non.lt(0), 0);
+// var ocon = ocon.where(ocon.lt(0), 0);
+// var WS = WS.where(WS.lt(0), 0);
 
 
-
+var mask = BS.gt(0);
+var BS = BS.updateMask(mask);
+var mask = DB.gt(0);
+var DB = DB.updateMask(mask);
+var mask = GR.gt(0);
+var GR = GR.updateMask(mask);
+var mask = BS.gt(0);
+var JP = JP.updateMask(mask);
+var mask = non.gt(0);
+var non = non.updateMask(mask);
+var mask = BS.gt(0);
+var ocon = ocon.updateMask(mask);
+var mask = WS.gt(0);
+var WS = WS.updateMask(mask);
 
 //resample all variables
-// var bd = resample(bd.clip(can_al), 250, 500, 'SR-ORG:6974');
+var bd = resample(bd.clip(can_al), 250, 500, 'SR-ORG:6974');
 var clay = resample(clay.clip(can_al), 250, 500, 'SR-ORG:6974');
 var sand = resample(sand.clip(can_al), 250, 500, 'SR-ORG:6974');
 var silt = resample(silt.clip(can_al), 250, 500, 'SR-ORG:6974');
@@ -295,7 +305,6 @@ var feat_iteration = ee.FeatureCollection(burn_years.map(function(element){
   
   var sr = mod_sr.filterDate(startYear + startDay, endYear + endDay);
 
-  var vi =  mod_vi.filterDate(String(end) + '-05-16', String(end) + '-06-15').mean();
 
   
   var bands = ['sur_refl_b01', 'sur_refl_b02', 'sur_refl_b03',
@@ -344,8 +353,14 @@ var feat_iteration = ee.FeatureCollection(burn_years.map(function(element){
           .map(function(img) {return img.multiply(distDir)           
           .set('system:time_start', img.get('system:time_start'))}); 
   
-  var ndii = ndii.filterDate(String(end) + '-05-16', String(end) + '-06-15').mean();
+    //NDVI 
+  var ndvi = sr.map(get_NDVI)                                            
+          .map(function(img) {return img         
+          .set('system:time_start', img.get('system:time_start'))}); 
   
+  var ndii = ndii.filterDate(String(end) + '-05-16', String(end) + '-06-15').mean();
+  var ndvi = ndvi.filterDate(String(end) + '-05-16', String(end) + '-06-15').mean();
+
   //get indices of interest
   var preNBR = nbr.filterDate(String(start) + '-06-01', String(start) + '-08-31').select('NBR').mean().select('NBR').rename('preNBR');
   var postNBR = nbr.filterDate(String(end) + '-06-01', String(end) + '-08-31').select('NBR').mean().select('NBR').rename('postNBR');
@@ -389,8 +404,7 @@ var feat_iteration = ee.FeatureCollection(burn_years.map(function(element){
   var tree_cover2= resample(tree_cover2.clip(can_al), 250, 500, 'SR-ORG:6974');
   
   var stand_age2 = stand_age.filter(ee.Filter.date(sdate1, sdate2)).mean().select('b1').rename('stand_age');
-  Map.addLayer(stand_age2, {palette: ['red', 'green', 'blue']})
-  Map.addLayer(modis_samples2)
+
   // // //get indices of interest
   // var preNBR = nbr.filterDate(String(start) + '-06-01', String(start) + '-08-31').mean();
   // var postNBR = nbr.filterDate(String(end) + '-06-01', String(end) + '-08-31').mean();
@@ -456,14 +470,14 @@ var feat_iteration = ee.FeatureCollection(burn_years.map(function(element){
   var tcap = tcap.filterDate(String(end) + '-05-16', String(end) + '-06-15').mean();
 
   //get all the 30m bands
-  var all_30_bands = rdnbr.addBands(tree_cover2).addBands(tcap).addBands(vi).addBands(ndii).
+  var all_30_bands = rdnbr.addBands(tree_cover2).addBands(tcap).addBands(ndvi).addBands(ndii).
                   addBands(twi).addBands(dem).addBands(aspect).addBands(slope);
   
   //use mean to go up to 500
   var all_30_bands = resample(all_30_bands, 250, 500, 'SR-ORG:6974');
 
   //get all the 250m bands
-  var all_250_bands = sand.addBands(silt).addBands(clay).
+  var all_250_bands = bd.addBands(sand).addBands(silt).addBands(clay).
                       addBands(soil_ph).addBands(soc);
   
   var all_250_bands = resample(all_250_bands, 250, 500, 'SR-ORG:6974');
@@ -477,10 +491,10 @@ var feat_iteration = ee.FeatureCollection(burn_years.map(function(element){
   var all_1000_bands = ruggedness.addBands(pfi);
   
 
-  var mod_30_result = mod_extract(modis_samples2, all_30_bands, 500, 'SR-ORG:6974');
-  var mod_250_result = mod_extract(modis_samples2, all_250_bands, 500, 'SR-ORG:6974');
-  var mod_500_result = mod_extract(modis_samples2, all_500_bands, 500, 'SR-ORG:6974');
-  var mod_1000_result = mod_extract(modis_samples2, all_1000_bands, 500, 'SR-ORG:6974');
+  var mod_30_result = mod_extract(modis_samples2, all_30_bands, 463.312713623047, 'SR-ORG:6974');
+  var mod_250_result = mod_extract(modis_samples2, all_250_bands, 463.312713623047, 'SR-ORG:6974');
+  var mod_500_result = mod_extract(modis_samples2, all_500_bands, 463.312713623047, 'SR-ORG:6974');
+  var mod_1000_result = mod_extract(modis_samples2, all_1000_bands, 463.312713623047, 'SR-ORG:6974');
 
   var mod_result = join_all(mod_30_result, mod_250_result, mod_filter);
   var mod_result = join_all(mod_result, mod_500_result, mod_filter);

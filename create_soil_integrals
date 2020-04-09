@@ -1,0 +1,181 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = 
+    /* color: #d63000 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-169.25148835625788, 73.66248558449605],
+          [-169.25148835625788, 41.33735529388488],
+          [-45.14992585625787, 41.33735529388488],
+          [-45.14992585625787, 73.66248558449605]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var clay1 = ee.Image('users/spotter/Sand_Pct/SNDPPT_M_sl1_250m_ll').select('b1').rename('b1')
+var clay2 = ee.Image('users/spotter/Sand_Pct/SNDPPT_M_sl2_250m_ll').select('b1').rename('b2')
+var clay3 = ee.Image('users/spotter/Sand_Pct/SNDPPT_M_sl3_250m_ll').select('b1').rename('b3')
+var clay4 = ee.Image('users/spotter/Sand_Pct/SNDPPT_M_sl4_250m_ll').select('b1').rename('b4')
+
+var all_clay = ee.Image([clay1, clay2, clay3, clay4]);
+
+  // S30_agg <-  as.integer((1./30*(5.*(S0_rast+S5_rast)/2 + 10.*(S5_rast+S15_rast)/2 + 15.*(S15_rast+S30_rast)/2)))
+
+
+var agg = all_clay.expression(
+    '(1.0/30*(5.0*(S0_rast+S5_rast)/2 + 10.0*(S5_rast+S15_rast)/2 + 15.0*(S15_rast+S30_rast)/2))', {
+      'S0_rast': all_clay.select('b1'),
+      'S5_rast': all_clay.select('b2'),
+      'S15_rast': all_clay.select('b3'),
+      'S30_rast': all_clay.select('b4')
+});
+
+var agg = agg.select('constant').rename('Clay_30');
+
+Export.image.toAsset({
+  image: agg,
+  description: 'Sand',
+  assetId: 'users/spotter/Soil_Grids_Integrals/Sand_Pct_30_agg',
+  scale: 250,
+  maxPixels: 10e10,
+  region:geometry
+  
+});
+
+var clay1 = ee.Image('users/spotter/Bulk_Density/BLDFIE_M_sl1_250m_ll').select('b1').rename('b1')
+var clay2 = ee.Image('users/spotter/Bulk_Density/BLDFIE_M_sl2_250m_ll').select('b1').rename('b2')
+var clay3 = ee.Image('users/spotter/Bulk_Density/BLDFIE_M_sl3_250m_ll').select('b1').rename('b3')
+var clay4 = ee.Image('users/spotter/Bulk_Density/BLDFIE_M_sl4_250m_ll').select('b1').rename('b4')
+
+var all_clay = ee.Image([clay1, clay2, clay3, clay4]);
+
+  // S30_agg <-  as.integer((1./30*(5.*(S0_rast+S5_rast)/2 + 10.*(S5_rast+S15_rast)/2 + 15.*(S15_rast+S30_rast)/2)))
+
+
+var agg = all_clay.expression(
+    '(1.0/30*(5.0*(S0_rast+S5_rast)/2 + 10.0*(S5_rast+S15_rast)/2 + 15.0*(S15_rast+S30_rast)/2))', {
+      'S0_rast': all_clay.select('b1'),
+      'S5_rast': all_clay.select('b2'),
+      'S15_rast': all_clay.select('b3'),
+      'S30_rast': all_clay.select('b4')
+});
+
+var agg = agg.select('constant').rename('BD_30');
+
+Export.image.toAsset({
+  image: agg,
+  description: 'BD',
+  assetId: 'users/spotter/Soil_Grids_Integrals/BD_30_agg',
+  scale: 250,
+  maxPixels: 10e10,
+  region:geometry
+  
+});
+
+var clay1 = ee.Image('users/spotter/Clay_Pct/CLYPPT_M_sl1_250m_ll').select('b1').rename('b1')
+var clay2 = ee.Image('users/spotter/Clay_Pct/CLYPPT_M_sl2_250m_ll').select('b1').rename('b2')
+var clay3 = ee.Image('users/spotter/Clay_Pct/CLYPPT_M_sl3_250m_ll').select('b1').rename('b3')
+var clay4 = ee.Image('users/spotter/Clay_Pct/CLYPPT_M_sl4_250m_ll').select('b1').rename('b4')
+
+var all_clay = ee.Image([clay1, clay2, clay3, clay4]);
+
+  // S30_agg <-  as.integer((1./30*(5.*(S0_rast+S5_rast)/2 + 10.*(S5_rast+S15_rast)/2 + 15.*(S15_rast+S30_rast)/2)))
+
+
+var agg = all_clay.expression(
+    '(1.0/30*(5.0*(S0_rast+S5_rast)/2 + 10.0*(S5_rast+S15_rast)/2 + 15.0*(S15_rast+S30_rast)/2))', {
+      'S0_rast': all_clay.select('b1'),
+      'S5_rast': all_clay.select('b2'),
+      'S15_rast': all_clay.select('b3'),
+      'S30_rast': all_clay.select('b4')
+});
+
+var agg = agg.select('constant').rename('Clay_30');
+
+Export.image.toAsset({
+  image: agg,
+  description: 'Clay',
+  assetId: 'users/spotter/Soil_Grids_Integrals/Clay_30_agg',
+  scale: 250,
+  maxPixels: 10e10,
+  region:geometry
+  
+});
+
+
+var agg = ee.Image('users/spotter/Silt_Pct/SLTPPT_M_sl3_250m_ll').select('b1').rename('b1')
+
+
+var agg = agg.select('b1').rename('Silt_30');
+Export.image.toAsset({
+  image: agg,
+  description: 'Silt',
+  assetId: 'users/spotter/Soil_Grids_Integrals/Silt_30_agg',
+  scale: 250,
+  maxPixels: 10e10,
+  region:geometry
+  
+});
+
+
+
+var clay1 = ee.Image('users/spotter/SOC_Stock/OCSTHA_M_sd1_250m_ll').select('b1').rename('b1')
+var clay2 = ee.Image('users/spotter/SOC_Stock/OCSTHA_M_sd2_250m_ll').select('b1').rename('b2')
+var clay3 = ee.Image('users/spotter/SOC_Stock/OCSTHA_M_sd3_250m_ll').select('b1').rename('b3')
+var clay4 = ee.Image('users/spotter/SOC_Stock/OCSTHA_M_sd4_250m_ll').select('b1').rename('b4')
+
+var all_clay = ee.Image([clay1, clay2, clay3, clay4]);
+
+  // S30_agg <-  as.integer((1./30*(5.*(S0_rast+S5_rast)/2 + 10.*(S5_rast+S15_rast)/2 + 15.*(S15_rast+S30_rast)/2)))
+
+
+var agg = all_clay.expression(
+    '(1.0/30*(5.0*(S0_rast+S5_rast)/2 + 10.0*(S5_rast+S15_rast)/2 + 15.0*(S15_rast+S30_rast)/2))', {
+      'S0_rast': all_clay.select('b1'),
+      'S5_rast': all_clay.select('b2'),
+      'S15_rast': all_clay.select('b3'),
+      'S30_rast': all_clay.select('b4')
+});
+
+var agg = agg.select('constant').rename('SOC_30');
+Export.image.toAsset({
+  image: agg,
+  description: 'SOC',
+  assetId: 'users/spotter/Soil_Grids_Integrals/SOC_30_agg',
+  scale: 250,
+  maxPixels: 10e10,
+  region:geometry
+  
+});
+
+
+var clay1 = ee.Image('users/spotter/soil_pH/PHIHOX_M_sl1_250m_ll').select('b1').rename('b1')
+var clay2 = ee.Image('users/spotter/soil_pH/PHIHOX_M_sl2_250m_ll').select('b1').rename('b2')
+var clay3 = ee.Image('users/spotter/soil_pH/PHIHOX_M_sl3_250m_ll').select('b1').rename('b3')
+var clay4 = ee.Image('users/spotter/soil_pH/PHIHOX_M_sl4_250m_ll').select('b1').rename('b4')
+
+var all_clay = ee.Image([clay1, clay2, clay3, clay4]);
+
+  // S30_agg <-  as.integer((1./30*(5.*(S0_rast+S5_rast)/2 + 10.*(S5_rast+S15_rast)/2 + 15.*(S15_rast+S30_rast)/2)))
+
+
+var agg = all_clay.expression(
+    '(1.0/30*(5.0*(S0_rast+S5_rast)/2 + 10.0*(S5_rast+S15_rast)/2 + 15.0*(S15_rast+S30_rast)/2))', {
+      'S0_rast': all_clay.select('b1'),
+      'S5_rast': all_clay.select('b2'),
+      'S15_rast': all_clay.select('b3'),
+      'S30_rast': all_clay.select('b4')
+});
+
+var agg = agg.select('constant').rename('pH_30');
+var agg = agg.divide(10)
+Map.addLayer(agg)
+Export.image.toAsset({
+  image: agg,
+  description: 'ph',
+  assetId: 'users/spotter/Soil_Grids_Integrals/pH_30_agg',
+  scale: 250,
+  maxPixels: 10e10,
+  region:geometry
+  
+});
