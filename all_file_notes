@@ -154,9 +154,9 @@ Notes: Join all the variables together such as FWI, CNA, DOB and spatial variabl
 
 File: predict_samples.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R/scaling
-Notes: Run the predictions on the scaled data and do the bias correction with a linear model.
-Export graphs of comparisons and residual plots and the linear model for all four model versions of all vars, no FWI,
-now stand age and no FWI and stand age
+Notes: Run the predictions on the scaled data and do the bias correction with a linear model (type2.
+Export graphs of comparisons and residual plots and the linear model for two model versions of all vars and no FWI.
+Stand age was taken out already.
 
 
 
@@ -233,12 +233,18 @@ File: warp_for_ee2.R
 Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
 Notes: This file will take all the land cover types from Brendan and convert to modis grid for uploading to EE.
 
-File: get_site_SE.R
-Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R/monte_carlo
-Notes: This file will compare the observed vs SE plots of both above and belowground emissions in SK, NWT and AK.
-It will also run 1,000 iterations to get new above.carbon.combusted and below.ground.carbon combusted values used for
-final monte carlo predictions.  For samples in above/belowground measurements we don't have monte carlo vaues 
-the SE is filled with the linear regression of the observed vs SE plots.
+File: warp_for_ee2.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion/R
+Notes: This file will take all the land cover types from Brendan and convert to modis grid for uploading to EE.
+
+File: extract_all_predictors.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R/monte_carlo/rfe
+Notes: This file will extract all the predictors used for the final spatial predictions at 500m modis
+
+File: extract_orig_modis_veg.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R/
+Notes: This file will extract all the native resolution 500m vegetation (JP, WS etc) predictors and replace the EE 
+aquired ones used in all the scaling excersises (e.g. /mnt/data1/boreal/spotter/scripts/combustion/R/scaling/join_all_vars_new.R)
 
 File: extract_predictors
 Location: (ee) users/spotter/default/combustion/export_predictors
@@ -247,6 +253,27 @@ Notes: Export at 500m all predictors except for VI and tasseled cap
 File: extract_vi_predictors
 Location: (ee) users/spotter/default/combustion/export_predictors
 Notes: Export at 500m  for VI and tasseled cap using LANDSAT
+
+File: final_predictions.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/R/final_predictions/rfe_no_age/
+Notes: This file will predict both above and belowground C and apply the scaling factor from the type 2 linear regression and output shape
+files of the predictions.  There is also one of these for /mnt/data1/boreal/spotter/scripts/combustion_final/R/final_predictions/rfe_no_fwi/
+which will take out the fwi predictors
+
+File: point_to_ras.py
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/python/
+Notes: This will convert the tif files from above to (final_predictions.R) into raster files at the correct grid
+
+File: smooth_bias_curves.py
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final/python/
+Notes: This will apply a GAM model when necessary to the binned curves used in the scaling excersizes.  15 bins were created
+whwere th sd of the residuals was found per bin.  These smoothed curves will be applied to the monte carlo analysis
+
+
+
+
+
+
 
 
 
