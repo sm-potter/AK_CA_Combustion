@@ -1,0 +1,5 @@
+1.  Run all of sols burned area code in the order he suggests.  This will out put the 3 band rasters.
+
+2.  Now turn these pixels into latitude and longitude so we can get the ClimateNA variables.  This script is located in /mnt/data1/boreal/spotter/scripts/combustion_final2/R/2018_2019/get_all_burn_pixels.R
+
+3. 
