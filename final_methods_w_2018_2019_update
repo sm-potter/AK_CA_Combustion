@@ -2,4 +2,10 @@
 
 2.  Now turn these pixels into latitude and longitude so we can get the ClimateNA variables.  This script is located in /mnt/data1/boreal/spotter/scripts/combustion_final2/R/2018_2019/get_all_burn_pixels.R
 
-3. 
+3. Now extract the non-vi predictors in EE, using the resulting modis_for_ee shapefile.  This is in /users/spotter/default/combustion/export_predictors_table_fwi
+
+4. Now extract the vi predictors in EE, using the resulting modis_for_ee shapefile.  This is in /users/spotter/default/combustion/export_vi_predictors_2018_2019
+
+5. Now extract the fwi predictors in EE, using the resulting modis_for_ee shapefile.  This is in /users/spotter/default/combustion/fwi_extract_final_preds_2018_2019
+
+
