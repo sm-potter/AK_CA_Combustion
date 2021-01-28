@@ -9,8 +9,10 @@
 5. Now extract the fwi predictors in EE, using the resulting modis_for_ee shapefile.  This is in /users/spotter/default/combustion/fwi_extract_final_preds_2018_2019
 
 6. File: extract_orig_modis_veg.R
-Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final2/R/2019/2019
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final2/R/2019_2019
 Notes: This file will extract all the native resolution 500m vegetation (JP, WS etc) predictors.
 
-
+7.Join all the predictors together and also find which pixels don't have FWI available as we will use two models
+File: join_predictors_for_prediction.R
+Location: (cloud ops) /mnt/data1/boreal/spotter/scripts/combustion_final2/R/2019_2019
 
